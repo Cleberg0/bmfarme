@@ -4,6 +4,7 @@ import CnpjBlock from './blocks/CnpjBlock';
 import InfraBlock from './blocks/InfraBlock';
 import SmsBlock from './blocks/SmsBlock';
 import TrackingBlock from './blocks/TrackingBlock';
+import DashboardPanel from './DashboardPanel';
 
 type ClientData = {
   razaoSocial: string;
@@ -49,6 +50,11 @@ export default function GodModePanel() {
   const [smsCode, setSmsCode] = useState<string | null>(null);
   const [smsPhone, setSmsPhone] = useState<string | null>(null);
   const [generatingCard, setGeneratingCard] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
+
+  if (showDashboard) {
+    return <DashboardPanel onBack={() => setShowDashboard(false)} />;
+  }
 
   const resetPipeline = () => {
     setClientId(null);
@@ -96,6 +102,14 @@ export default function GodModePanel() {
             <p className="text-sm text-slate-500">Olá, <span className="text-slate-300 font-medium">{user?.name || 'Operador'}</span></p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {/* Dashboard */}
+            <button
+              type="button"
+              onClick={() => setShowDashboard(true)}
+              className="rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-400 transition hover:bg-purple-500/20"
+            >
+              📊 Dashboard
+            </button>
             {/* Cartão CNPJ — só aparece quando tem cliente */}
             {clientId && (
               <button

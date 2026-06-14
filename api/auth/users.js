@@ -1,0 +1,76 @@
+const bcrypt = require('bcryptjs');
+const prisma = require('../_lib/prisma');
+const { verifyAuth, setCors } = require('../_lib/auth');
+
+module.exports = async function handler(req, res) {
+  setCors(res);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const user = verifyAuth(req, res);
+  if (!user) return;
+
+  // Apenas ADMIN pode gerenciar usuários
+  if (user.role !== 'ADMIN')
+    return res.status(403).json({ error: 'Apenas administradores podem gerenciar usuários.' });
+
+  // GET — lista todos os usuários
+  if (req.method === 'GET') {
+    try {
+      const users = await prisma.user.findMany({
+        select: {
+          id: true, email: true, name: true, role: true, createdAt: true,
+          _count: { select: { bmAssets: true } }
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      return res.status(200).json(users);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  // POST — cria novo usuário
+  if (req.method === 'POST') {
+    try {
+      const { email, password, name, role } = req.body;
+      if (!email || !password || !name)
+        return res.status(400).json({ error: 'email, password e name são obrigatórios.' });
+
+      if (password.length < 6)
+        return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres.' });
+
+      const existing = await prisma.user.findUnique({ where: { email: String(email).toLowerCase() } });
+      if (existing) return res.status(409).json({ error: 'E-mail já cadastrado.' });
+
+      const hashed = await bcrypt.hash(password, 10);
+      const newUser = await prisma.user.create({
+        data: {
+          email: String(email).toLowerCase(),
+          password: hashed,
+          name,
+          role: role === 'ADMIN' ? 'ADMIN' : 'OPERATOR',
+        },
+        select: { id: true, email: true, name: true, role: true, createdAt: true },
+      });
+      return res.status(201).json(newUser);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  // DELETE — remove usuário por id (query param)
+  if (req.method === 'DELETE') {
+    try {
+      const { id } = req.query;
+      if (!id) return res.status(400).json({ error: 'id é obrigatório.' });
+      if (id === user.id) return res.status(400).json({ error: 'Não é possível remover a própria conta.' });
+
+      await prisma.user.delete({ where: { id } });
+      return res.status(200).json({ message: 'Usuário removido.' });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  return res.status(405).json({ error: 'Method not allowed.' });
+};
