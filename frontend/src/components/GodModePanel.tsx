@@ -47,6 +47,7 @@ export default function GodModePanel() {
   const [workerUrl, setWorkerUrl] = useState<string | null>(null);
   const [smsLogId, setSmsLogId] = useState<string | null>(null);
   const [smsCode, setSmsCode] = useState<string | null>(null);
+  const [smsPhone, setSmsPhone] = useState<string | null>(null);
   const [generatingCard, setGeneratingCard] = useState(false);
 
   const resetPipeline = () => {
@@ -56,6 +57,7 @@ export default function GodModePanel() {
     setWorkerUrl(null);
     setSmsLogId(null);
     setSmsCode(null);
+    setSmsPhone(null);
   };
 
   const handleOpenCard = async () => {
@@ -164,6 +166,7 @@ export default function GodModePanel() {
               setWorkerUrl(null);
               setSmsLogId(null);
               setSmsCode(null);
+              setSmsPhone(null);
             }}
           />
         </StepSection>
@@ -173,6 +176,7 @@ export default function GodModePanel() {
           <InfraBlock
             clientId={clientId}
             razaoSocial={clientData?.razaoSocial}
+            smsPhone={smsPhone}
             onDomainReady={(id, url) => {
               setDomainId(id);
               setWorkerUrl(url);
@@ -184,9 +188,11 @@ export default function GodModePanel() {
         <StepSection step={3} title="Gerar SMS" subtitle="Gere um número virtual para verificação">
           <SmsBlock
             clientId={clientId}
-            onSmsReady={(id, code) => {
+            onPhoneGenerated={(phone) => setSmsPhone(phone)}
+            onSmsReady={(id, code, phone) => {
               setSmsLogId(id);
               setSmsCode(code);
+              setSmsPhone(phone);
             }}
           />
         </StepSection>

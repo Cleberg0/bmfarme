@@ -6,10 +6,11 @@ import axios from 'axios';
 
 type SmsBlockProps = {
   clientId: string | null;
-  onSmsReady: (smsLogId: string, code: string) => void;
+  onSmsReady: (smsLogId: string, code: string, phone: string) => void;
+  onPhoneGenerated?: (phone: string) => void;
 };
 
-export default function SmsBlock({ clientId, onSmsReady }: SmsBlockProps) {
+export default function SmsBlock({ clientId, onSmsReady, onPhoneGenerated }: SmsBlockProps) {
   const [logId, setLogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,8 +22,14 @@ export default function SmsBlock({ clientId, onSmsReady }: SmsBlockProps) {
   useEffect(() => {
     if (!smsCode || !logId || lastDeliveredCodeRef.current === smsCode) return;
     lastDeliveredCodeRef.current = smsCode;
-    onSmsReady(logId, smsCode);
-  }, [logId, onSmsReady, smsCode]);
+    onSmsReady(logId, smsCode, phoneNumber ?? '');
+  }, [logId, onSmsReady, smsCode, phoneNumber]);
+
+  // Dispara onPhoneGenerated assim que o número for gerado (antes do código chegar)
+  useEffect(() => {
+    if (!phoneNumber || !onPhoneGenerated) return;
+    onPhoneGenerated(phoneNumber);
+  }, [phoneNumber, onPhoneGenerated]);
 
   const handleGenerate = async () => {
     if (!clientId) return;

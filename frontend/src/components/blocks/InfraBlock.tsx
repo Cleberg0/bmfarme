@@ -8,6 +8,7 @@ type VerificationMethod = 'meta_tag' | 'html_file';
 type InfraBlockProps = {
   clientId: string | null;
   razaoSocial?: string;
+  smsPhone?: string | null;
   onDomainReady: (domainId: string, workerUrl: string) => void;
 };
 
@@ -26,7 +27,7 @@ const METHOD_OPTIONS: { value: VerificationMethod; label: string; description: s
   },
 ];
 
-export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: InfraBlockProps) {
+export default function InfraBlock({ clientId, razaoSocial, smsPhone, onDomainReady }: InfraBlockProps) {
   const [subdomain, setSubdomain] = useState('');
   const [metaCode, setMetaCode] = useState('');
   const [method, setMethod] = useState<VerificationMethod>('meta_tag');
@@ -159,6 +160,19 @@ export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: Inf
           />
         </div>
       </div>
+
+      {/* Info SMS vinculado */}
+      {smsPhone ? (
+        <div className="flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm">
+          <span className="text-blue-400">📱</span>
+          <span className="text-blue-300">Número SMS <strong className="font-mono">{smsPhone}</strong> será incluído no site</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/40 px-4 py-2.5 text-xs text-slate-500">
+          <span>💡</span>
+          <span>Gere um número SMS no passo 3 antes de publicar para incluí-lo no site</span>
+        </div>
+      )}
 
       {/* Botões */}
       <div className="flex flex-wrap gap-3">

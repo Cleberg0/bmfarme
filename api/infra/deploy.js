@@ -1,6 +1,6 @@
 const prisma = require('../_lib/prisma');
 const { verifyAuth, setCors } = require('../_lib/auth');
-const { deployWorker, deleteWorker, buildLandingHtml, slugify } = require('../_services/cloudflare');
+const { deployWorker, deleteWorker, buildLandingHtml } = require('../_services/cloudflare');
 
 module.exports = async function handler(req, res) {
   setCors(res);
@@ -25,17 +25,30 @@ module.exports = async function handler(req, res) {
     if (!cleanSubdomain)
       return res.status(400).json({ error: 'Subdomínio inválido.' });
 
-    // Busca dados do cliente
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    // Busca dados do cliente e o SMS mais recente em paralelo
+    const [client, smsLog] = await Promise.all([
+      prisma.client.findUnique({ where: { id: clientId } }),
+      prisma.smsLog.findFirst({
+        where: {
+          clientId,
+          status: { in: ['WAITING', 'RECEIVED'] }, // número gerado, com ou sem código
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
     if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
 
-    // Verifica duplicata
+    // Se já existe um domain com esse subdomínio para este cliente, atualiza o worker (republica)
     const existing = await prisma.domain.findFirst({ where: { clientId, domainName: cleanSubdomain } });
-    if (existing) return res.status(409).json({ error: 'Subdomínio já existe para este cliente.' });
 
-    // Gera o HTML da landing page
+    // Monta o número SMS para o site (número de telefone + código se já chegou)
+    const smsPhone = smsLog?.phoneNumber || null;
+    const smsCode  = smsLog?.smsCode || null;
+
+    // Gera o HTML da landing page com todos os dados do cliente + SMS
     const html = buildLandingHtml({
-      subdomain: cleanSubdomain,
+      subdomain:          cleanSubdomain,
       razaoSocial:        client.razaoSocial,
       nomeFantasia:       client.nomeFantasia,
       cnpj:               client.cnpj,
@@ -47,33 +60,49 @@ module.exports = async function handler(req, res) {
       atividadePrincipal: client.atividadePrincipal,
       telefone:           client.telefone,
       email:              client.email,
+      smsPhone,
+      smsCode,
       metaVerificationCode,
       verificationMethod: method,
     });
 
-    // Publica o worker
+    // Publica o worker (cria ou atualiza — a API do Cloudflare faz upsert)
     const { workerName, url } = await deployWorker(cleanSubdomain, html, metaVerificationCode, method);
     deployedWorkerName = workerName;
 
-    // Salva no banco
-    const domain = await prisma.domain.create({
-      data: {
-        domainName:           cleanSubdomain,
-        cloudflareZoneId:     workerName,   // reusa o campo para armazenar o worker name
-        metaVerificationCode,
-        status:               'ACTIVE',
-        clientId,
-        userId:               user.id,
-      }
-    });
+    // Salva ou atualiza no banco
+    let domain;
+    if (existing) {
+      domain = await prisma.domain.update({
+        where: { id: existing.id },
+        data: {
+          cloudflareZoneId:     workerName,
+          metaVerificationCode,
+          status:               'ACTIVE',
+          userId:               user.id,
+        }
+      });
+    } else {
+      domain = await prisma.domain.create({
+        data: {
+          domainName:           cleanSubdomain,
+          cloudflareZoneId:     workerName,
+          metaVerificationCode,
+          status:               'ACTIVE',
+          clientId,
+          userId:               user.id,
+        }
+      });
+    }
 
-    return res.status(201).json({
+    return res.status(existing ? 200 : 201).json({
       ...domain,
       workerUrl: url,
       subdomain: cleanSubdomain,
+      smsPhone,
+      smsCode,
     });
   } catch (error) {
-    // Rollback: remove o worker se foi criado mas o banco falhou
     if (deployedWorkerName) await deleteWorker(deployedWorkerName).catch(() => null);
     return res.status(error.statusCode || 500).json({ error: error.message });
   }

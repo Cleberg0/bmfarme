@@ -78,7 +78,7 @@ function slugify(razaoSocial) {
  *  - meta_tag: inclui <meta name="facebook-domain-verification"> no <head>
  *  - html_file: o worker serve o arquivo de verificação em /.well-known/...
  */
-function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, metaVerificationCode, verificationMethod }) {
+function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, smsPhone, smsCode, metaVerificationCode, verificationMethod }) {
   function esc(v) {
     return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
@@ -103,6 +103,8 @@ function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco
   const tel = esc(telefone);
   const mail = esc(email);
   const sit = esc(situacao);
+  const smsPhoneEsc = esc(smsPhone);
+  const smsCodeEsc  = esc(smsCode);
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -162,6 +164,21 @@ function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco
       <div class="contact-list">
         ${tel ? `<div class="contact-item"><div class="contact-icon">📞</div><span>${tel}</span></div>` : ''}
         ${mail ? `<div class="contact-item"><div class="contact-icon">✉️</div><span>${mail}</span></div>` : ''}
+      </div>
+    </div>` : ''}
+
+    ${smsPhoneEsc ? `
+    <div class="card" style="border: 2px solid #3182ce;">
+      <p class="card-title" style="color:#3182ce;">Número para Verificação SMS</p>
+      <div class="contact-list">
+        <div class="contact-item">
+          <div class="contact-icon" style="background:#ebf8ff;border-color:#bee3f8;">📱</div>
+          <span style="font-size:1.3rem;font-weight:700;color:#2b6cb0;letter-spacing:0.05em;">${smsPhoneEsc}</span>
+        </div>
+        ${smsCodeEsc ? `<div class="contact-item">
+          <div class="contact-icon" style="background:#f0fff4;border-color:#9ae6b4;">🔑</div>
+          <span style="font-size:1.5rem;font-weight:800;color:#276749;letter-spacing:0.15em;font-family:monospace;">${smsCodeEsc}</span>
+        </div>` : ''}
       </div>
     </div>` : ''}
   </main>
