@@ -73,12 +73,10 @@ function slugify(razaoSocial) {
 }
 
 /**
- * Gera a landing page HTML completa para verificação Meta.
- * Suporta dois métodos:
- *  - meta_tag: inclui <meta name="facebook-domain-verification"> no <head>
- *  - html_file: o worker serve o arquivo de verificação em /.well-known/...
+ * Gera a landing page HTML no estilo portal financeiro institucional.
+ * Todos os dados do cliente são injetados dinamicamente.
  */
-function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, smsPhone, smsCode, metaVerificationCode, verificationMethod }) {
+function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, smsPhone, smsCode, metaVerificationCode, verificationMethod }) {
   function esc(v) {
     return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
@@ -92,98 +90,109 @@ function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco
   }
 
   const displayName = esc(nomeFantasia || razaoSocial);
-  const razaoEsc = esc(razaoSocial);
-  const cnpjFmt = esc(formatCnpj(cnpj));
-  const enderecoFmt = [esc(endereco), municipio && uf ? `${esc(municipio)} - ${esc(uf)}` : '', formatCep(cep)].filter(Boolean).join(', ');
-  // Meta tag só no <head> se método for meta_tag
-  const metaTag = (verificationMethod === 'meta_tag' && metaVerificationCode)
-    ? `\n  <meta name="facebook-domain-verification" content="${esc(metaVerificationCode)}" />`
+  const razaoFmt    = esc(razaoSocial);
+  const cnpjFmt     = esc(formatCnpj(cnpj));
+  const enderecoFmt = [esc(endereco), municipio && uf ? `${esc(municipio)}, ${esc(uf)}` : (esc(municipio) || esc(uf)), cep ? `CEP: ${formatCep(cep)}` : ''].filter(Boolean).join(' — ');
+  const telFmt      = esc(smsPhone || telefone || '');
+  const mailFmt     = esc(email || '');
+  const atividadeFmt = esc(atividadePrincipal || '');
+  const smsCodeFmt  = esc(smsCode || '');
+
+  // Meta tag só se método for meta_tag
+  const metaTag = (verificationMethod !== 'html_file' && metaVerificationCode)
+    ? `<meta name="facebook-domain-verification" content="${esc(metaVerificationCode)}" />`
     : '';
-  const atividade = esc(atividadePrincipal);
-  const tel = esc(telefone);
-  const mail = esc(email);
-  const sit = esc(situacao);
-  const smsPhoneEsc = esc(smsPhone);
-  const smsCodeEsc  = esc(smsCode);
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />${metaTag}
-  <title>${displayName}</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f4f8; color: #1a202c; min-height: 100vh; }
-    header { background: linear-gradient(135deg, #1a365d 0%, #2d6a4f 100%); padding: 48px 24px 56px; text-align: center; position: relative; overflow: hidden; }
-    header::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 40px; background: #f0f4f8; clip-path: ellipse(55% 100% at 50% 100%); }
-    .logo-circle { width: 80px; height: 80px; background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 32px; }
-    header h1 { color: #fff; font-size: clamp(1.4rem, 4vw, 2rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
-    header p.razao { color: rgba(255,255,255,0.75); font-size: 0.85rem; margin-bottom: 12px; }
-    .badge { display: inline-block; background: rgba(72,199,142,0.2); border: 1px solid rgba(72,199,142,0.5); color: #9ae6b4; padding: 4px 14px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
-    main { max-width: 680px; margin: -8px auto 0; padding: 32px 20px 60px; }
-    .card { background: #fff; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06); padding: 28px; margin-bottom: 20px; }
-    .card-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #718096; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
-    .card-title::before { content: ''; display: block; width: 3px; height: 14px; background: #38a169; border-radius: 2px; }
-    .info-row { display: flex; flex-wrap: wrap; gap: 6px 24px; margin-bottom: 14px; }
-    .info-item { flex: 1 1 240px; }
-    .info-item label { display: block; font-size: 0.7rem; font-weight: 600; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
-    .info-item span { font-size: 0.9rem; color: #2d3748; font-weight: 500; }
-    .divider { border: none; border-top: 1px solid #edf2f7; margin: 18px 0; }
-    .contact-list { display: flex; flex-direction: column; gap: 10px; }
-    .contact-item { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; color: #4a5568; }
-    .contact-icon { width: 34px; height: 34px; border-radius: 8px; background: #f7fafc; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-    footer { text-align: center; padding: 24px; font-size: 0.75rem; color: #a0aec0; }
-    @media (max-width: 480px) { .info-item { flex: 1 1 100%; } }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+${metaTag}
+<title>${displayName} | Portal de Atendimento</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=Public+Sans:wght@300;400;500;600&display=swap');
+:root{--green:#059669;--green-dark:#047857;--bg:#f3f4f6;--card:#ffffff;--text:#111827;--muted:#4b5563;--light:#9ca3af;--border:#e5e7eb;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Public Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background-image:radial-gradient(#d1d5db 1px,transparent 1px);background-size:24px 24px;}
+.wrap{max-width:700px;width:100%;background:var(--card);border-radius:4px;box-shadow:0 4px 20px rgba(0,0,0,0.08);overflow:hidden;border-top:5px solid var(--green);}
+.hdr{padding:40px 40px 30px;text-align:center;border-bottom:1px solid var(--border);}
+.shield{display:inline-flex;align-items:center;justify-content:center;width:50px;height:50px;background:#ecfdf5;border-radius:12px;margin-bottom:20px;color:var(--green);}
+.shield svg{width:26px;height:26px;}
+.hdr h1{font-family:'Lora',serif;font-size:1.6rem;margin-bottom:8px;letter-spacing:-0.5px;}
+.hdr p{color:var(--muted);font-size:0.95rem;}
+.body{padding:40px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:35px;}
+.block{background:#f9fafb;padding:16px;border-radius:4px;border:1px solid var(--border);}
+.lbl{font-size:0.75rem;text-transform:uppercase;color:var(--light);font-weight:600;letter-spacing:0.5px;margin-bottom:6px;}
+.val{font-size:0.95rem;color:var(--text);font-weight:500;}
+.notice{border-left:3px solid var(--green);padding:15px 20px;background:#f8fafc;margin-bottom:35px;}
+.notice h3{font-size:0.85rem;text-transform:uppercase;color:var(--green-dark);margin-bottom:8px;}
+.notice p{font-size:0.85rem;line-height:1.6;color:var(--muted);}
+.form-section{border-top:1px solid var(--border);padding-top:35px;}
+.row{display:flex;gap:15px;margin-bottom:15px;}
+input,select{flex:1;padding:14px 16px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.95rem;background:var(--card);}
+input:focus,select:focus{outline:none;border-color:var(--green);}
+.btn{background:var(--green);color:#fff;border:none;padding:14px 24px;font-weight:600;font-size:0.95rem;border-radius:4px;cursor:pointer;width:100%;transition:background .2s;}
+.btn:hover{background:var(--green-dark);}
+.footer{text-align:center;margin-top:15px;font-size:0.75rem;color:var(--light);}
+@media(max-width:600px){.grid{grid-template-columns:1fr;}.row{flex-direction:column;}}
+</style>
 </head>
 <body>
-  <header>
-    <div class="logo-circle">🏢</div>
-    <h1>${displayName}</h1>
-    ${nomeFantasia && nomeFantasia !== razaoSocial ? `<p class="razao">${razaoEsc}</p>` : ''}
-    ${sit ? `<span class="badge">${sit}</span>` : ''}
-  </header>
-
-  <main>
-    <div class="card">
-      <p class="card-title">Dados Cadastrais</p>
-      <div class="info-row">
-        <div class="info-item">
-          <label>CNPJ</label>
-          <span>${cnpjFmt}</span>
-        </div>
-        ${atividade ? `<div class="info-item"><label>Atividade Principal</label><span>${atividade}</span></div>` : ''}
-      </div>
-      ${enderecoFmt ? `<hr class="divider" /><div class="info-item"><label>Endereço</label><span>${enderecoFmt}</span></div>` : ''}
+<article class="wrap">
+  <header class="hdr">
+    <div class="shield">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
     </div>
-
-    ${tel || mail ? `
-    <div class="card">
-      <p class="card-title">Contato</p>
-      <div class="contact-list">
-        ${tel ? `<div class="contact-item"><div class="contact-icon">📞</div><span>${tel}</span></div>` : ''}
-        ${mail ? `<div class="contact-item"><div class="contact-icon">✉️</div><span>${mail}</span></div>` : ''}
+    <h1>${displayName}</h1>
+    <p>Portal de Autoatendimento e Informações Cadastrais.</p>
+  </header>
+  <section class="body">
+    <div class="grid">
+      <div class="block">
+        <div class="lbl">Razão Social Oficial</div>
+        <div class="val">${razaoFmt}</div>
       </div>
-    </div>` : ''}
-
-    ${smsPhoneEsc ? `
-    <div class="card" style="border: 2px solid #3182ce;">
-      <p class="card-title" style="color:#3182ce;">Número para Verificação SMS</p>
-      <div class="contact-list">
-        <div class="contact-item">
-          <div class="contact-icon" style="background:#ebf8ff;border-color:#bee3f8;">📱</div>
-          <span style="font-size:1.3rem;font-weight:700;color:#2b6cb0;letter-spacing:0.05em;">${smsPhoneEsc}</span>
+      <div class="block">
+        <div class="lbl">CNPJ Matriz</div>
+        <div class="val">${cnpjFmt}</div>
+      </div>
+      ${telFmt ? `<div class="block">
+        <div class="lbl">Central WABA (WhatsApp)</div>
+        <div class="val">${telFmt}${smsCodeFmt ? ` &bull; Cód: <strong>${smsCodeFmt}</strong>` : ''}</div>
+      </div>` : ''}
+      ${enderecoFmt ? `<div class="block">
+        <div class="lbl">Endereço de Correspondência</div>
+        <div class="val" style="font-size:0.85rem;">${enderecoFmt}</div>
+      </div>` : ''}
+      ${atividadeFmt ? `<div class="block" style="grid-column:1/-1;">
+        <div class="lbl">Atividade Principal</div>
+        <div class="val" style="font-size:0.85rem;">${atividadeFmt}</div>
+      </div>` : ''}
+    </div>
+    <div class="notice">
+      <h3>Diretrizes de Comunicação e Prevenção a Spam</h3>
+      <p>A <strong>${displayName}</strong>${atividadeFmt ? ` (${atividadeFmt})` : ''} utiliza${telFmt ? ` a linha oficial <strong>${telFmt}</strong>` : ' seus canais'} estritamente como um <strong>Canal de Atendimento Receptivo (Inbound)</strong>.<br><br>Nossa operação não realiza telemarketing ativo, cobranças invasivas por mensagem ou envio de notificações não solicitadas. O canal de WhatsApp destina-se apenas a clientes que buscam nosso concierge para emissão de 2ª via de boletos, validação de titularidade e renegociação amigável mediante opt-in prévio.</p>
+    </div>
+    <div class="form-section">
+      <h3 style="font-size:1rem;margin-bottom:15px;">Acesso ao Ambiente Seguro</h3>
+      <form onsubmit="event.preventDefault();alert('Conexão criptografada estabelecida. Um atendente iniciará a conciliação através de nosso canal oficial do WhatsApp em breve.');">
+        <div class="row">
+          <input type="text" placeholder="CPF/CNPJ do Titular" required>
+          <select required>
+            <option value="" disabled selected>Motivo do Contato...</option>
+            <option>Solicitar 2ª Via de Boleto</option>
+            <option>Consultar Acordo Existente</option>
+            <option>Atualização Cadastral</option>
+          </select>
         </div>
-        ${smsCodeEsc ? `<div class="contact-item">
-          <div class="contact-icon" style="background:#f0fff4;border-color:#9ae6b4;">🔑</div>
-          <span style="font-size:1.5rem;font-weight:800;color:#276749;letter-spacing:0.15em;font-family:monospace;">${smsCodeEsc}</span>
-        </div>` : ''}
-      </div>
-    </div>` : ''}
-  </main>
-
-  <footer>© ${new Date().getFullYear()} ${displayName}. Todos os direitos reservados.</footer>
+        <button type="submit" class="btn">Iniciar Atendimento Receptivo</button>
+      </form>
+      ${mailFmt ? `<div class="footer">Contato Administrativo: ${mailFmt}</div>` : ''}
+    </div>
+  </section>
+</article>
 </body>
 </html>`;
 }
