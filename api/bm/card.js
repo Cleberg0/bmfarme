@@ -12,14 +12,56 @@ function buildCardHtml(d) {
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
+<meta name="viewport" content="width=794"/>
 <title>Comprovante CNPJ</title>
 <style>
-@page{size:A4 portrait;margin:15mm 20mm;}
+@page{size:A4 portrait;margin:0;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#000;background:#e8e8e8;}
-.page-wrap{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:15mm 20mm;}
+body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;background:#e8e8e8;min-height:100vh;}
+.page-wrap{width:794px;min-height:1123px;margin:0 auto;background:#fff;padding:40px 45px;}
 .wrap{width:100%;border:1px solid #555;}
-@media print{body{background:#fff;}.page-wrap{width:100%;padding:0;margin:0;}.actions{display:none;}}
+/* Header */
+.hdr{padding:8px 12px 6px;text-align:center;border-bottom:1px solid #555;}
+.hdr-inner{display:flex;align-items:center;justify-content:center;gap:14px;}
+.brasao{width:56px;height:auto;}
+.hdr-text h1{font-size:15px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;}
+.hdr-text h2{font-size:12px;font-weight:bold;text-transform:uppercase;margin-top:3px;}
+/* Linha do título doc */
+.title-row{display:flex;border-bottom:1px solid #555;}
+.title-left{padding:5px 10px;border-right:1px solid #555;min-width:170px;}
+.title-left .fl{font-size:8px;color:#555;text-transform:uppercase;display:block;margin-bottom:2px;}
+.title-left .fv{font-size:12px;font-weight:bold;}
+.title-left .fv2{font-size:10px;}
+.title-mid{flex:1;padding:5px 10px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;font-weight:bold;text-transform:uppercase;line-height:1.4;}
+.title-right{padding:5px 10px;border-left:1px solid #555;min-width:120px;}
+.title-right .fl{font-size:8px;color:#555;text-transform:uppercase;display:block;margin-bottom:2px;}
+.title-right .fv{font-size:11px;font-weight:bold;}
+/* Rows */
+.row{padding:5px 10px;border-bottom:1px solid #555;}
+.row .fl{font-size:8px;color:#555;text-transform:uppercase;display:block;margin-bottom:2px;}
+.row .fv{font-size:11px;font-weight:bold;}
+.row-flex{display:flex;border-bottom:1px solid #555;}
+.cell{padding:5px 10px;flex:1;}
+.cell .fl{font-size:8px;color:#555;text-transform:uppercase;display:block;margin-bottom:2px;}
+.cell .fv{font-size:11px;font-weight:bold;}
+.bl{border-left:1px solid #555;}
+.w130{flex:0 0 130px;}
+.w100{flex:0 0 100px;}
+.w80{flex:0 0 80px;}
+.w65{flex:0 0 65px;}
+.w55{flex:0 0 55px;}
+/* Footer */
+.ftr{padding:12px 10px 8px;font-size:9px;color:#222;}
+.ftr-bottom{display:flex;justify-content:space-between;margin-top:2px;}
+.actions{display:flex;gap:12px;justify-content:center;margin:24px 0 16px;}
+.btn{padding:10px 30px;border:none;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;}
+.btn-p{background:#1a7f4b;color:#fff;}
+.btn-c{background:#e5e7eb;color:#374151;}
+@media print{
+  body{background:#fff;}
+  .page-wrap{width:100%;padding:8mm 10mm;margin:0;}
+  .actions{display:none;}
+}
 /* Header */
 .hdr{padding:6px 10px 4px;text-align:center;border-bottom:1px solid #555;}
 .hdr-inner{display:flex;align-items:center;justify-content:center;gap:12px;}
