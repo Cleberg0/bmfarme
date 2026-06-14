@@ -167,46 +167,57 @@ function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco
 
 /**
  * Publica (ou atualiza) um Cloudflare Worker com o HTML da landing page.
- * O worker responde a qualquer request devolvendo o HTML.
- * URL final: https://<subdomain>.zaplifydisparo.workers.dev
+ * Usa a API de upload de script simples (application/javascript).
+ * URL final: https://<workerName>.zaplifydisparo.workers.dev
  */
 async function deployWorker(subdomain, htmlContent) {
-  const workerName = `${subdomain}-${env.cloudflareWorkersSubdomain}`.slice(0, 64);
+  const accountId = env.cloudflareAccountId;
+  const workersDomain = env.cloudflareWorkersSubdomain;
+  // Nome único: subdomain-workerdomain (máx 64 chars)
+  const workerName = `${subdomain}-${workersDomain}`.slice(0, 64);
 
-  const workerScript = `
-const HTML = ${JSON.stringify(htmlContent)};
+  // Worker script em ES Module format — embute o HTML como string
+  const workerScript = `const HTML = ${JSON.stringify(htmlContent)};
 export default {
   async fetch(request) {
     return new Response(HTML, {
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-cache',
-      },
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
     });
   },
-};
-`.trim();
+};`;
 
   try {
-    // Publica o worker via API (multipart/form-data com metadata)
-    const FormData = require('form-data');
-    const form = new FormData();
-    form.append('metadata', JSON.stringify({
+    // Upload via multipart/form-data usando boundary manual (sem dependência externa)
+    const boundary = `----FormBoundary${Date.now()}`;
+    const metadataJson = JSON.stringify({
       main_module: 'worker.js',
       compatibility_date: '2024-01-01',
-    }), { contentType: 'application/json', filename: 'metadata.json' });
-    form.append('worker.js', workerScript, {
-      contentType: 'application/javascript+module',
-      filename: 'worker.js',
     });
 
+    const CRLF = '\r\n';
+    const parts = [
+      `--${boundary}${CRLF}`,
+      `Content-Disposition: form-data; name="metadata"; filename="metadata.json"${CRLF}`,
+      `Content-Type: application/json${CRLF}`,
+      `${CRLF}`,
+      metadataJson,
+      `${CRLF}`,
+      `--${boundary}${CRLF}`,
+      `Content-Disposition: form-data; name="worker.js"; filename="worker.js"${CRLF}`,
+      `Content-Type: application/javascript+module${CRLF}`,
+      `${CRLF}`,
+      workerScript,
+      `${CRLF}`,
+      `--${boundary}--${CRLF}`,
+    ].join('');
+
     const res = await axios.put(
-      `https://api.cloudflare.com/client/v4/accounts/${env.cloudflareAccountId}/workers/scripts/${workerName}`,
-      form,
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${workerName}`,
+      parts,
       {
         headers: {
           Authorization: `Bearer ${env.cloudflareApiToken}`,
-          ...form.getHeaders(),
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
         },
         timeout: 30000,
       }
@@ -217,7 +228,7 @@ export default {
       throw new Error(msg);
     }
 
-    const url = `https://${workerName}.${env.cloudflareWorkersSubdomain}.workers.dev`;
+    const url = `https://${workerName}.${workersDomain}.workers.dev`;
     return { workerName, url };
   } catch (error) {
     const message = error.response?.data?.errors?.[0]?.message || error.message;
