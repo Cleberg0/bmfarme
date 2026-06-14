@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../../api/client';
 import { useSmsPoll } from '../../hooks/useSmsPoll';
-import StatusBadge from '../ui/StatusBadge';
+import CopyButton from '../ui/CopyButton';
 import axios from 'axios';
 
 type SmsBlockProps = {
@@ -11,113 +11,103 @@ type SmsBlockProps = {
 
 export default function SmsBlock({ clientId, onSmsReady }: SmsBlockProps) {
   const [logId, setLogId] = useState<string | null>(null);
-  const [generatedPhone, setGeneratedPhone] = useState<string | null>(null);
-  const [requestStatus, setRequestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [flashBorder, setFlashBorder] = useState(false);
-  const flashTimeoutRef = useRef<number | null>(null);
   const lastDeliveredCodeRef = useRef<string | null>(null);
 
-  const { status, smsCode, isPolling, phoneNumber } = useSmsPoll(logId ? String(logId) : null, Boolean(logId));
+  const { status, smsCode, isPolling, phoneNumber } = useSmsPoll(logId, Boolean(logId));
 
+  // Dispara onSmsReady quando código chegar
   useEffect(() => {
-    if (!smsCode || !logId || lastDeliveredCodeRef.current === smsCode) {
-      return;
-    }
+    if (!smsCode || !logId || lastDeliveredCodeRef.current === smsCode) return;
     lastDeliveredCodeRef.current = smsCode;
     onSmsReady(logId, smsCode);
-    setFlashBorder(true);
-    if (flashTimeoutRef.current) {
-      window.clearTimeout(flashTimeoutRef.current);
-    }
-    flashTimeoutRef.current = window.setTimeout(() => setFlashBorder(false), 1800);
-    return () => {
-      if (flashTimeoutRef.current) {
-        window.clearTimeout(flashTimeoutRef.current);
-      }
-    };
   }, [logId, onSmsReady, smsCode]);
 
-  const badgeStatus = useMemo<'idle' | 'loading' | 'success' | 'error'>(() => {
-    if (requestStatus === 'error' || status === 'FAILED' || status === 'EXPIRED') {
-      return 'error';
-    }
-    if (smsCode) {
-      return 'success';
-    }
-    if (requestStatus === 'loading' || isPolling) {
-      return 'loading';
-    }
-    return requestStatus;
-  }, [isPolling, requestStatus, smsCode, status]);
-
   const handleGenerate = async () => {
-    if (!clientId) {
-      return;
-    }
-    setRequestStatus('loading');
+    if (!clientId) return;
+    setLoading(true);
     setError('');
-    setGeneratedPhone(null);
+    setLogId(null);
+    lastDeliveredCodeRef.current = null;
     try {
       const { data } = await api.post('/sms/generate', { clientId });
-      const nextLogId: string = data.smsLog?.id ?? data.id;
-      const nextPhone: string | null = data.smsLog?.phoneNumber ?? data.phoneNumber ?? null;
+      const nextLogId: string = data.id ?? data.smsLog?.id;
       setLogId(nextLogId);
-      setGeneratedPhone(nextPhone);
-      lastDeliveredCodeRef.current = null;
-      setRequestStatus('success');
-    } catch (requestError) {
-      setRequestStatus('error');
+    } catch (err) {
       setError(
-        axios.isAxiosError(requestError)
-          ? requestError.response?.data?.message || requestError.message
-          : requestError instanceof Error
-            ? requestError.message
-            : 'Falha ao gerar número.'
+        axios.isAxiosError(err)
+          ? err.response?.data?.error || err.message
+          : err instanceof Error ? err.message : 'Falha ao gerar número.'
       );
+    } finally {
+      setLoading(false);
     }
   };
 
+  const displayPhone = phoneNumber ?? null;
+
   return (
-    <div className={`space-y-5 rounded-2xl border ${flashBorder ? 'animate-flash-border border-emerald-500/50' : 'border-transparent'}`}>
-      <div className="flex flex-wrap items-center gap-4">
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={requestStatus === 'loading'}
-          className="rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Gerar Numero
-        </button>
-        <StatusBadge
-          status={badgeStatus}
-          label={smsCode ? 'Código recebido' : isPolling ? 'Aguardando SMS' : requestStatus === 'error' ? 'Erro no SMS' : 'SMS pendente'}
-        />
-      </div>
+    <div className="space-y-5">
+      {/* Botão gerar */}
+      <button
+        type="button"
+        onClick={handleGenerate}
+        disabled={loading || isPolling}
+        className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {loading ? (
+          <>
+            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" className="stroke-current opacity-20" strokeWidth="4" />
+              <path d="M22 12a10 10 0 0 0-10-10" className="stroke-current" strokeWidth="4" strokeLinecap="round" />
+            </svg>
+            Gerando número...
+          </>
+        ) : logId ? '🔄 Gerar Novo Número' : '📱 Gerar Número SMS'}
+      </button>
 
-      {(generatedPhone || phoneNumber) && (
-        <div className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3">
-          <p className="text-sm text-slate-400">Número gerado</p>
-          <p className="mt-1 text-lg font-mono text-slate-100">{phoneNumber || generatedPhone}</p>
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          ❌ {error}
         </div>
       )}
 
-      {isPolling && (
-        <div className="flex items-center gap-3 text-sm text-emerald-300">
-          <span className="animate-pulse-dot h-3 w-3 rounded-full bg-emerald-400" />
-          <span>Aguardando codigo...</span>
+      {/* Número gerado */}
+      {displayPhone && (
+        <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-500">Número para receber SMS</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-mono text-2xl font-bold text-slate-100">{displayPhone}</p>
+            <CopyButton value={displayPhone} label="número" />
+          </div>
         </div>
       )}
 
+      {/* Status aguardando */}
+      {isPolling && !smsCode && (
+        <div className="flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3">
+          <span className="h-3 w-3 animate-pulse rounded-full bg-blue-400" />
+          <p className="text-sm font-medium text-blue-300">Aguardando chegada do SMS... (atualiza automaticamente)</p>
+        </div>
+      )}
+
+      {/* Código recebido */}
       {smsCode && (
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-5">
-          <p className="text-sm text-emerald-300">Código recebido</p>
-          <p className="mt-2 text-4xl font-bold text-emerald-400">{smsCode}</p>
+        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-5">
+          <p className="mb-2 text-sm font-semibold text-emerald-300">✅ Código SMS recebido!</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-mono text-5xl font-bold tracking-widest text-emerald-400">{smsCode}</p>
+            <CopyButton value={smsCode} label="código SMS" />
+          </div>
         </div>
       )}
 
-      {(status === 'EXPIRED' || status === 'FAILED' || error) && (
-        <p className="text-sm text-red-400">{error || `Status do SMS: ${status}`}</p>
+      {/* Expirado/falha */}
+      {(status === 'EXPIRED' || status === 'FAILED') && !smsCode && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          ⚠️ SMS {status === 'EXPIRED' ? 'expirou' : 'falhou'}. Clique em "Gerar Novo Número" para tentar novamente.
+        </div>
       )}
     </div>
   );
