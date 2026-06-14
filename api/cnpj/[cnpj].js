@@ -31,7 +31,17 @@ module.exports = async function handler(req, res) {
       }
     });
 
-    return res.status(200).json(client);
+    // Retorna cliente do banco + dados extras da API (nomeFantasia, telefone, etc.)
+    return res.status(200).json({
+      ...client,
+      nomeFantasia: cnpjData.nomeFantasia,
+      municipio: cnpjData.municipio,
+      uf: cnpjData.uf,
+      situacao: cnpjData.situacao,
+      atividadePrincipal: cnpjData.atividadePrincipal,
+      telefone: cnpjData.telefone,
+      email: cnpjData.email,
+    });
   } catch (error) {
     return res.status(error.statusCode || 500).json({ error: error.message });
   }
