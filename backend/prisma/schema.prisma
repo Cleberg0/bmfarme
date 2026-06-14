@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_NON_POOLING")
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+}
+
+enum DomainStatus {
+  PENDING
+  ACTIVE
+  FAILED
+}
+
+enum SmsStatus {
+  WAITING
+  RECEIVED
+  EXPIRED
+  FAILED
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  name      String
+  role      UserRole  @default(OPERATOR)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  clients   Client[]
+  domains   Domain[]
+  smsLogs   SmsLog[]
+  bmAssets  BmAsset[]
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  cnpj        String    @unique
+  razaoSocial String
+  endereco    String
+  cep         String
+  userId      String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  domains     Domain[]
+  smsLogs     SmsLog[]
+  bmAssets    BmAsset[]
+}
+
+model Domain {
+  id                   String       @id @default(cuid())
+  domainName           String
+  cloudflareZoneId     String
+  metaVerificationCode String
+  status               DomainStatus @default(PENDING)
+  clientId             String
+  userId               String
+  createdAt            DateTime     @default(now())
+  client               Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  user                 User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  bmAssets             BmAsset[]
+
+  @@unique([clientId, domainName])
+}
+
+model SmsLog {
+  id          String    @id @default(cuid())
+  phoneNumber String
+  externalId  String?   // ID do número no provedor SMS (ex: sms24h), usado para polling
+  smsCode     String?
+  provider    String
+  status      SmsStatus @default(WAITING)
+  clientId    String
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  bmAssets    BmAsset[]
+}
+
+model BmAsset {
+  id          String   @id @default(cuid())
+  bmId        String
+  profileUsed String
+  notes       String?
+  clientId    String
+  domainId    String
+  smsLogId    String
+  userId      String
+  createdAt   DateTime @default(now())
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  domain      Domain   @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  smsLog      SmsLog   @relation(fields: [smsLogId], references: [id], onDelete: Restrict)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([clientId, bmId])
+}
