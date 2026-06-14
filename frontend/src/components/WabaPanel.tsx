@@ -175,7 +175,35 @@ export default function WabaPanel({ onBack }: { onBack: () => void }) {
           ))}
         </div>
 
-        {/* Formulário de registro */}
+        {/* Acesso Rápido — DataCrazy */}
+        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 space-y-3">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-blue-400">🔗 Acesso Rápido — DataCrazy CRM</h2>
+          <p className="text-xs text-slate-500">Use a conta abaixo para criar WABAs pelo CRM e depois registre o WABA ID aqui.</p>
+          <a
+            href="https://crm.datacrazy.io/login"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-500 transition w-fit"
+          >
+            🌐 Abrir DataCrazy CRM ↗
+          </a>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-1">Login</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-mono text-slate-200">euronaldoalvess@gmail.com</p>
+                <CopyButton value="euronaldoalvess@gmail.com" label="login" />
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-1">Senha</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-mono text-slate-200">150304Ral$</p>
+                <CopyButton value="150304Ral$" label="senha" />
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="rounded-2xl border border-slate-700/50 bg-slate-900 p-5 space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">+ Registrar Nova WABA</h2>
           <form onSubmit={handleCreate} className="grid gap-3 sm:grid-cols-2">
