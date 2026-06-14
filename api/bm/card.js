@@ -1,201 +1,225 @@
 const prisma = require('../_lib/prisma');
 const { verifyAuth, setCors } = require('../_lib/auth');
 
-function buildCardHtml({ razaoSocial, nomeFantasia, cnpj, endereco, numero, complemento, bairro, cep, municipio, uf, situacao, dataSituacao, atividadePrincipal, naturezaJuridica, porte, telefone, email, dataAbertura, smsPhone }) {
+function buildCardHtml(d) {
   function esc(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function formatCnpj(c) { const d=String(c||'').replace(/\D/g,''); return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')||c; }
-  function formatCep(c) { const d=String(c||'').replace(/\D/g,''); return d.replace(/^(\d{5})(\d{3})$/,'$1-$2')||c; }
+  function fmtCnpj(c) { const n=String(c||'').replace(/\D/g,''); return n.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')||c; }
+  function fmtCep(c)  { const n=String(c||'').replace(/\D/g,''); return n.replace(/^(\d{5})(\d{3})$/,'$1-$2')||c; }
 
-  const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  const cnpjFmt = formatCnpj(cnpj);
-  const cepFmt = formatCep(cep);
+  const now = new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
-<title>Comprovante CNPJ – ${esc(cnpj)}</title>
+<title>Comprovante CNPJ</title>
 <style>
-@page { size: A4; margin: 15mm 15mm; }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background: #fff; }
-.page { max-width: 750px; margin: 0 auto; border: 1px solid #000; padding: 0; }
-.header { text-align: center; padding: 12px 8px 8px; border-bottom: 1px solid #000; }
-.header-top { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 6px; }
-.brasao { width: 52px; height: 52px; }
-.header-titles h1 { font-size: 13px; font-weight: bold; text-transform: uppercase; }
-.header-titles h2 { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-top: 2px; }
-.doc-title { display: flex; border-top: 1px solid #000; }
-.doc-title-left { border-right: 1px solid #000; padding: 6px 8px; font-size: 10px; min-width: 160px; }
-.doc-title-left .lbl { font-size: 8px; text-transform: uppercase; color: #555; display: block; }
-.doc-title-left .val { font-size: 12px; font-weight: bold; }
-.doc-title-left .val2 { font-size: 10px; }
-.doc-title-center { flex: 1; padding: 6px 8px; text-align: center; font-size: 12px; font-weight: bold; text-transform: uppercase; display: flex; align-items: center; justify-content: center; }
-.doc-title-right { border-left: 1px solid #000; padding: 6px 8px; font-size: 10px; min-width: 110px; }
-.doc-title-right .lbl { font-size: 8px; text-transform: uppercase; color: #555; display: block; }
-.row { border-top: 1px solid #000; padding: 5px 8px; }
-.row .lbl { font-size: 8px; text-transform: uppercase; color: #555; display: block; margin-bottom: 2px; }
-.row .val { font-size: 11px; font-weight: bold; }
-.row-flex { border-top: 1px solid #000; display: flex; }
-.cell { padding: 5px 8px; flex: 1; }
-.cell .lbl { font-size: 8px; text-transform: uppercase; color: #555; display: block; margin-bottom: 2px; }
-.cell .val { font-size: 11px; font-weight: bold; }
-.cell-border { border-left: 1px solid #000; }
-.cell-sm { flex: 0 0 80px; }
-.cell-xs { flex: 0 0 60px; }
-.footer-text { padding: 10px 8px 6px; font-size: 9px; color: #333; border-top: 1px solid #000; }
-.print-actions { display: flex; gap: 10px; justify-content: center; margin: 20px; }
-.btn { padding: 10px 28px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
-.btn-print { background: #1a7f4b; color: #fff; }
-.btn-close { background: #e5e7eb; color: #374151; }
-${smsPhone ? `.sms-box { margin: 0 15px 15px; border: 2px solid #1a7f4b; border-radius: 8px; padding: 10px 15px; background: #f0fdf4; display: flex; align-items: center; justify-content: space-between; }` : ''}
-@media print { .print-actions { display: none; } body { background: #fff; } }
+@page{size:A4 portrait;margin:10mm 12mm;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#000;background:#fff;}
+.wrap{width:100%;border:1px solid #555;}
+/* Header */
+.hdr{padding:6px 10px 4px;text-align:center;border-bottom:1px solid #555;}
+.hdr-inner{display:flex;align-items:center;justify-content:center;gap:12px;}
+.brasao{width:48px;height:auto;}
+.hdr-text{}
+.hdr-text h1{font-size:12pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;}
+.hdr-text h2{font-size:10pt;font-weight:bold;text-transform:uppercase;margin-top:2px;}
+/* Linha do título doc */
+.title-row{display:flex;border-bottom:1px solid #555;}
+.title-left{padding:4px 8px;border-right:1px solid #555;min-width:155px;}
+.title-left .fl{font-size:7pt;color:#555;text-transform:uppercase;display:block;margin-bottom:1px;}
+.title-left .fv{font-size:10pt;font-weight:bold;}
+.title-left .fv2{font-size:8pt;}
+.title-mid{flex:1;padding:4px 8px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10pt;font-weight:bold;text-transform:uppercase;line-height:1.3;}
+.title-right{padding:4px 8px;border-left:1px solid #555;min-width:110px;}
+.title-right .fl{font-size:7pt;color:#555;text-transform:uppercase;display:block;margin-bottom:1px;}
+.title-right .fv{font-size:9pt;font-weight:bold;}
+/* Rows */
+.row{padding:4px 8px;border-bottom:1px solid #555;}
+.row .fl{font-size:7pt;color:#555;text-transform:uppercase;display:block;margin-bottom:1px;}
+.row .fv{font-size:9pt;font-weight:bold;}
+.row-flex{display:flex;border-bottom:1px solid #555;}
+.cell{padding:4px 8px;flex:1;}
+.cell .fl{font-size:7pt;color:#555;text-transform:uppercase;display:block;margin-bottom:1px;}
+.cell .fv{font-size:9pt;font-weight:bold;}
+.bl{border-left:1px solid #555;}
+.w120{flex:0 0 120px;}
+.w90{flex:0 0 90px;}
+.w70{flex:0 0 70px;}
+.w55{flex:0 0 55px;}
+.w50{flex:0 0 50px;}
+/* Footer */
+.ftr{padding:8px 10px 6px;font-size:8pt;color:#222;}
+.ftr-bottom{display:flex;justify-content:space-between;}
+.actions{display:flex;gap:10px;justify-content:center;margin:20px 0;}
+.btn{padding:9px 26px;border:none;border-radius:6px;font-size:9pt;font-weight:bold;cursor:pointer;}
+.btn-p{background:#1a7f4b;color:#fff;}
+.btn-c{background:#e5e7eb;color:#374151;}
+@media print{.actions{display:none;}}
 </style>
 </head>
 <body>
-<div class="page">
+<div class="wrap">
+
   <!-- Cabeçalho -->
-  <div class="header">
-    <div class="header-top">
-      <img class="brasao" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Coat_of_arms_of_Brazil.svg/800px-Coat_of_arms_of_Brazil.svg.png" alt="Brasão" onerror="this.style.display='none'" />
-      <div class="header-titles">
+  <div class="hdr">
+    <div class="hdr-inner">
+      <img class="brasao" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Coat_of_arms_of_Brazil.svg/200px-Coat_of_arms_of_Brazil.svg.png" alt="" onerror="this.style.display='none'"/>
+      <div class="hdr-text">
         <h1>República Federativa do Brasil</h1>
         <h2>Cadastro Nacional da Pessoa Jurídica</h2>
       </div>
     </div>
   </div>
 
-  <!-- Número CNPJ + Título + Data -->
-  <div class="doc-title">
-    <div class="doc-title-left">
-      <span class="lbl">Número de Inscrição</span>
-      <div class="val">${esc(cnpjFmt)}</div>
-      <div class="val2">MATRIZ</div>
+  <!-- Nº Inscrição / Título / Data Abertura -->
+  <div class="title-row">
+    <div class="title-left">
+      <span class="fl">Número de Inscrição</span>
+      <div class="fv">${esc(fmtCnpj(d.cnpj))}</div>
+      <div class="fv2">MATRIZ</div>
     </div>
-    <div class="doc-title-center">Comprovante de Inscrição e de Situação Cadastral</div>
-    <div class="doc-title-right">
-      <span class="lbl">Data de Abertura</span>
-      <div class="val">${esc(dataAbertura||'')}</div>
+    <div class="title-mid">Comprovante de Inscrição e de Situação Cadastral</div>
+    <div class="title-right">
+      <span class="fl">Data de Abertura</span>
+      <div class="fv">${esc(d.dataAbertura||'')}</div>
     </div>
   </div>
 
   <!-- Nome Empresarial -->
   <div class="row">
-    <span class="lbl">Nome Empresarial</span>
-    <div class="val">${esc(razaoSocial)}</div>
+    <span class="fl">Nome Empresarial</span>
+    <div class="fv">${esc(d.razaoSocial)}</div>
   </div>
 
-  <!-- Nome Fantasia + Porte -->
+  <!-- Nome Fantasia / Porte -->
   <div class="row-flex">
     <div class="cell">
-      <span class="lbl">Título do Estabelecimento (Nome de Fantasia)</span>
-      <div class="val">${esc(nomeFantasia||'********')}</div>
+      <span class="fl">Título do Estabelecimento (Nome de Fantasia)</span>
+      <div class="fv">${esc(d.nomeFantasia||'********')}</div>
     </div>
-    <div class="cell cell-border cell-sm">
-      <span class="lbl">Porte</span>
-      <div class="val">${esc(porte||'DEMAIS')}</div>
+    <div class="cell bl w55">
+      <span class="fl">Porte</span>
+      <div class="fv">${esc(d.porte||'')}</div>
     </div>
   </div>
 
   <!-- Atividade Principal -->
   <div class="row">
-    <span class="lbl">Código e Descrição da Atividade Econômica Principal</span>
-    <div class="val">${esc(atividadePrincipal||'Não informada')}</div>
+    <span class="fl">Código e Descrição da Atividade Econômica Principal</span>
+    <div class="fv">${esc(d.atividadePrincipal||'Não informada')}</div>
+  </div>
+
+  <!-- Atividades Secundárias -->
+  <div class="row">
+    <span class="fl">Código e Descrição das Atividades Econômicas Secundárias</span>
+    <div class="fv">Não informada</div>
   </div>
 
   <!-- Natureza Jurídica -->
   <div class="row">
-    <span class="lbl">Código e Descrição da Natureza Jurídica</span>
-    <div class="val">${esc(naturezaJuridica||'Não informada')}</div>
+    <span class="fl">Código e Descrição da Natureza Jurídica</span>
+    <div class="fv">${esc(d.naturezaJuridica||'')}</div>
   </div>
 
-  <!-- Endereço -->
+  <!-- Logradouro / Número / Complemento -->
   <div class="row-flex">
     <div class="cell">
-      <span class="lbl">Logradouro</span>
-      <div class="val">${esc(endereco||'')}</div>
+      <span class="fl">Logradouro</span>
+      <div class="fv">${esc(d.endereco||'')}</div>
     </div>
-    <div class="cell cell-border cell-sm">
-      <span class="lbl">Número</span>
-      <div class="val">${esc(numero||'S/N')}</div>
+    <div class="cell bl w70">
+      <span class="fl">Número</span>
+      <div class="fv">${esc(d.numero||'S/N')}</div>
     </div>
-    <div class="cell cell-border">
-      <span class="lbl">Complemento</span>
-      <div class="val">${esc(complemento||'********')}</div>
+    <div class="cell bl w120">
+      <span class="fl">Complemento</span>
+      <div class="fv">${esc(d.complemento||'********')}</div>
     </div>
   </div>
 
   <!-- CEP / Bairro / Município / UF -->
   <div class="row-flex">
-    <div class="cell cell-sm">
-      <span class="lbl">CEP</span>
-      <div class="val">${esc(cepFmt)}</div>
+    <div class="cell w90">
+      <span class="fl">CEP</span>
+      <div class="fv">${esc(fmtCep(d.cep))}</div>
     </div>
-    <div class="cell cell-border">
-      <span class="lbl">Bairro/Distrito</span>
-      <div class="val">${esc(bairro||'')}</div>
+    <div class="cell bl">
+      <span class="fl">Bairro/Distrito</span>
+      <div class="fv">${esc(d.bairro||'')}</div>
     </div>
-    <div class="cell cell-border">
-      <span class="lbl">Município</span>
-      <div class="val">${esc(municipio||'')}</div>
+    <div class="cell bl">
+      <span class="fl">Município</span>
+      <div class="fv">${esc(d.municipio||'')}</div>
     </div>
-    <div class="cell cell-border cell-xs">
-      <span class="lbl">UF</span>
-      <div class="val">${esc(uf||'')}</div>
+    <div class="cell bl w50">
+      <span class="fl">UF</span>
+      <div class="fv">${esc(d.uf||'')}</div>
     </div>
   </div>
 
   <!-- Email / Telefone -->
   <div class="row-flex">
     <div class="cell">
-      <span class="lbl">Endereço Eletrônico</span>
-      <div class="val">${esc(email||'')}</div>
+      <span class="fl">Endereço Eletrônico</span>
+      <div class="fv">${esc(d.email||'')}</div>
     </div>
-    <div class="cell cell-border">
-      <span class="lbl">Telefone</span>
-      <div class="val">${esc(smsPhone ? smsPhone : (telefone||''))}</div>
-    </div>
-  </div>
-
-  <!-- Situação Cadastral -->
-  <div class="row-flex">
-    <div class="cell">
-      <span class="lbl">Situação Cadastral</span>
-      <div class="val">${esc(situacao||'ATIVA')}</div>
-    </div>
-    <div class="cell cell-border">
-      <span class="lbl">Data da Situação Cadastral</span>
-      <div class="val">${esc(dataSituacao||'')}</div>
+    <div class="cell bl">
+      <span class="fl">Telefone</span>
+      <div class="fv">${esc(d.smsPhone || d.telefone || '')}</div>
     </div>
   </div>
 
-  <!-- Motivo Situação -->
+  <!-- Ente Federativo -->
   <div class="row">
-    <span class="lbl">Motivo de Situação Cadastral</span>
-    <div class="val">&nbsp;</div>
+    <span class="fl">Ente Federativo Responsável (EFR)</span>
+    <div class="fv">*****</div>
   </div>
 
-  <!-- Situação Especial -->
+  <!-- Situação Cadastral / Data -->
   <div class="row-flex">
     <div class="cell">
-      <span class="lbl">Situação Especial</span>
-      <div class="val">********</div>
+      <span class="fl">Situação Cadastral</span>
+      <div class="fv">${esc(d.situacao||'ATIVA')}</div>
     </div>
-    <div class="cell cell-border">
-      <span class="lbl">Data da Situação Especial</span>
-      <div class="val">********</div>
+    <div class="cell bl">
+      <span class="fl">Data da Situação Cadastral</span>
+      <div class="fv">${esc(d.dataSituacao||'')}</div>
     </div>
   </div>
 
-  <div class="footer-text">
-    Aprovado pela Instrução Normativa RFB nº 2.119, de 06 de dezembro de 2022.<br/>
-    Emitido no dia <strong>${now}</strong> (data e hora de Brasília).&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Página: <strong>1/1</strong>
+  <!-- Motivo -->
+  <div class="row">
+    <span class="fl">Motivo de Situação Cadastral</span>
+    <div class="fv">&nbsp;</div>
+  </div>
+
+  <!-- Situação Especial / Data -->
+  <div class="row-flex" style="border-bottom:none;">
+    <div class="cell">
+      <span class="fl">Situação Especial</span>
+      <div class="fv">********</div>
+    </div>
+    <div class="cell bl">
+      <span class="fl">Data da Situação Especial</span>
+      <div class="fv">********</div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<div class="ftr">
+  <div>Aprovado pela Instrução Normativa RFB nº 2.119, de 06 de dezembro de 2022.</div>
+  <div class="ftr-bottom">
+    <div>Emitido no dia <strong>${now}</strong> (data e hora de Brasília).</div>
+    <div>Página: <strong>1/1</strong></div>
   </div>
 </div>
 
-<div class="print-actions">
-  <button class="btn btn-print" onclick="window.print()">🖨️ Salvar como PDF</button>
-  <button class="btn btn-close" onclick="window.close()">✕ Fechar</button>
+<div class="actions">
+  <button class="btn btn-p" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+  <button class="btn btn-c" onclick="window.close()">✕ Fechar</button>
 </div>
 </body>
 </html>`;
@@ -208,81 +232,72 @@ module.exports = async function handler(req, res) {
   const user = verifyAuth(req, res);
   if (!user) return;
 
+  // Helper para montar objeto de dados do cliente
+  async function buildDataFromClient(clientId) {
+    const [client, smsLog] = await Promise.all([
+      prisma.client.findUnique({ where: { id: clientId } }),
+      prisma.smsLog.findFirst({
+        where: { clientId, status: { in: ['RECEIVED', 'WAITING'] } },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+    if (!client) return null;
+
+    // Extrai dados extras do campo raw se existir
+    const raw = client.raw || {};
+
+    return {
+      razaoSocial:        client.razaoSocial        || '',
+      nomeFantasia:       client.nomeFantasia        || '',
+      cnpj:               client.cnpj               || '',
+      dataAbertura:       raw.data_inicio_atividade
+                            ? new Date(raw.data_inicio_atividade).toLocaleDateString('pt-BR')
+                            : '',
+      situacao:           client.situacao            || 'ATIVA',
+      dataSituacao:       raw.data_situacao_cadastral
+                            ? new Date(raw.data_situacao_cadastral).toLocaleDateString('pt-BR')
+                            : '',
+      porte:              raw.porte                  || '',
+      naturezaJuridica:   raw.natureza_juridica      || '',
+      atividadePrincipal: client.atividadePrincipal  || '',
+      endereco:           client.endereco            || '',
+      numero:             raw.numero                 || '',
+      complemento:        raw.complemento            || '',
+      bairro:             raw.bairro                 || '',
+      cep:                client.cep                 || '',
+      municipio:          client.municipio           || '',
+      uf:                 client.uf                  || '',
+      email:              client.email               || '',
+      telefone:           client.telefone            || '',
+      smsPhone:           smsLog?.phoneNumber        || '',
+    };
+  }
+
+  // GET — dados JSON para o modal ou HTML direto
   if (req.method === 'GET') {
     try {
       const { clientId, format } = req.query;
       if (!clientId) return res.status(400).json({ error: 'clientId é obrigatório.' });
 
-      const [client, smsLog] = await Promise.all([
-        prisma.client.findUnique({ where: { id: clientId } }),
-        prisma.smsLog.findFirst({
-          where: { clientId, status: { in: ['RECEIVED', 'WAITING'] } },
-          orderBy: { createdAt: 'desc' },
-        }),
-      ]);
+      const data = await buildDataFromClient(clientId);
+      if (!data) return res.status(404).json({ error: 'Cliente não encontrado.' });
 
-      if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
-
-      if (format === 'json') {
-        return res.status(200).json({
-          razaoSocial:        client.razaoSocial        || '',
-          nomeFantasia:       client.nomeFantasia        || '',
-          cnpj:               client.cnpj               || '',
-          endereco:           client.endereco            || '',
-          numero:             '',
-          complemento:        '',
-          bairro:             '',
-          cep:                client.cep                 || '',
-          municipio:          client.municipio           || '',
-          uf:                 client.uf                  || '',
-          situacao:           client.situacao            || 'ATIVA',
-          dataSituacao:       '',
-          atividadePrincipal: client.atividadePrincipal  || '',
-          naturezaJuridica:   '',
-          porte:              '',
-          telefone:           client.telefone            || '',
-          email:              client.email               || '',
-          dataAbertura:       '',
-          smsPhone:           smsLog?.phoneNumber        || '',
-        });
-      }
-
-      const html = buildCardHtml({
-        razaoSocial:        client.razaoSocial,
-        nomeFantasia:       client.nomeFantasia,
-        cnpj:               client.cnpj,
-        endereco:           client.endereco,
-        numero:             '',
-        complemento:        '',
-        bairro:             '',
-        cep:                client.cep,
-        municipio:          client.municipio,
-        uf:                 client.uf,
-        situacao:           client.situacao || 'ATIVA',
-        dataSituacao:       '',
-        atividadePrincipal: client.atividadePrincipal,
-        naturezaJuridica:   '',
-        porte:              '',
-        telefone:           client.telefone,
-        email:              client.email,
-        dataAbertura:       '',
-        smsPhone:           smsLog?.phoneNumber || null,
-      });
+      if (format === 'json') return res.status(200).json(data);
 
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      return res.status(200).send(html);
+      return res.status(200).send(buildCardHtml(data));
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
   }
 
+  // POST — gera com dados editados pelo usuário
   if (req.method === 'POST') {
     try {
       const data = req.body;
       if (!data.razaoSocial) return res.status(400).json({ error: 'razaoSocial é obrigatório.' });
-      const html = buildCardHtml(data);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      return res.status(200).send(html);
+      return res.status(200).send(buildCardHtml(data));
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
