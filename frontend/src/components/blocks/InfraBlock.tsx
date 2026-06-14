@@ -3,22 +3,40 @@ import api from '../../api/client';
 import CopyButton from '../ui/CopyButton';
 import axios from 'axios';
 
+type VerificationMethod = 'meta_tag' | 'html_file';
+
 type InfraBlockProps = {
   clientId: string | null;
   razaoSocial?: string;
   onDomainReady: (domainId: string, workerUrl: string) => void;
 };
 
+const METHOD_OPTIONS: { value: VerificationMethod; label: string; description: string; icon: string }[] = [
+  {
+    value: 'meta_tag',
+    label: 'Meta Tag HTML',
+    description: 'Adiciona <meta name="facebook-domain-verification"> no <head> da página',
+    icon: '🏷️',
+  },
+  {
+    value: 'html_file',
+    label: 'Arquivo HTML',
+    description: 'Serve um arquivo de verificação em /.well-known/facebook-domain-verification.html',
+    icon: '📄',
+  },
+];
+
 export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: InfraBlockProps) {
   const [subdomain, setSubdomain] = useState('');
   const [metaCode, setMetaCode] = useState('');
+  const [method, setMethod] = useState<VerificationMethod>('meta_tag');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [deployed, setDeployed] = useState<{ subdomain: string; workerUrl: string; domainId: string } | null>(null);
 
   // Sugere subdomínio automaticamente quando a razão social chega
   useEffect(() => {
-    if (!razaoSocial || deployed) return;
+    if (!razaoSocial) return;
     const stopWords = new Set(['de','da','do','dos','das','e','em','a','o','para','com','ltda','eireli','me','sa','ss','epp']);
     const slug = razaoSocial
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -30,7 +48,7 @@ export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: Inf
       .join('')
       .slice(0, 20);
     setSubdomain(slug || 'empresa');
-  }, [razaoSocial, deployed]);
+  }, [razaoSocial]);
 
   const handleDeploy = async () => {
     if (!clientId || !subdomain || !metaCode) return;
@@ -39,7 +57,8 @@ export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: Inf
     try {
       const { data } = await api.post('/infra/deploy', {
         subdomain: subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, ''),
-        metaVerificationCode: metaCode,
+        metaVerificationCode: metaCode.trim(),
+        verificationMethod: method,
         clientId,
       });
       const id: string = data.id ?? '';
@@ -57,8 +76,47 @@ export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: Inf
     }
   };
 
+  const handleRedeploy = async () => {
+    if (!clientId || !subdomain || !metaCode) return;
+    setDeployed(null);
+    setError('');
+    await handleDeploy();
+  };
+
+  const workerPreviewUrl = subdomain
+    ? `${subdomain}-zaplifydisparo.zaplifydisparo.workers.dev`
+    : '';
+
   return (
     <div className="space-y-5">
+
+      {/* Método de verificação */}
+      <div className="space-y-2">
+        <label className="text-sm font-semibold text-slate-300">Método de Verificação Meta</label>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {METHOD_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setMethod(opt.value)}
+              className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                method === opt.value
+                  ? 'border-emerald-500 bg-emerald-500/10'
+                  : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'
+              }`}
+            >
+              <span className="text-xl mt-0.5">{opt.icon}</span>
+              <div>
+                <p className={`text-sm font-semibold ${method === opt.value ? 'text-emerald-300' : 'text-slate-200'}`}>
+                  {opt.label}
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5">{opt.description}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Subdomínio */}
         <div className="space-y-1.5">
@@ -68,15 +126,14 @@ export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: Inf
               value={subdomain}
               onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
               placeholder="nomedocliente"
-              disabled={!!deployed}
               maxLength={30}
-              className="flex-1 bg-transparent px-4 py-3 text-slate-100 outline-none disabled:opacity-50"
+              className="flex-1 bg-transparent px-4 py-3 text-slate-100 outline-none"
             />
             <span className="pr-3 text-xs text-slate-500 whitespace-nowrap">.workers.dev</span>
           </div>
-          {subdomain && !deployed && (
-            <p className="text-xs text-slate-500">
-              URL: <span className="text-emerald-400 font-mono">{subdomain}-zaplifydisparo.zaplifydisparo.workers.dev</span>
+          {workerPreviewUrl && (
+            <p className="text-xs text-slate-500 truncate">
+              <span className="text-emerald-400 font-mono">{workerPreviewUrl}</span>
             </p>
           )}
         </div>
@@ -98,17 +155,17 @@ export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: Inf
             value={metaCode}
             onChange={(e) => setMetaCode(e.target.value.trim())}
             placeholder="Cole o código do Meta Business"
-            disabled={!!deployed}
-            className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-slate-100 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 disabled:opacity-50"
+            className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-slate-100 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
           />
         </div>
       </div>
 
-      {!deployed && (
+      {/* Botões */}
+      <div className="flex flex-wrap gap-3">
         <button
           type="button"
           onClick={handleDeploy}
-          disabled={loading || !subdomain || !metaCode}
+          disabled={loading || !subdomain || !metaCode || !clientId}
           className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? (
@@ -117,11 +174,22 @@ export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: Inf
                 <circle cx="12" cy="12" r="10" className="stroke-current opacity-20" strokeWidth="4" />
                 <path d="M22 12a10 10 0 0 0-10-10" className="stroke-current" strokeWidth="4" strokeLinecap="round" />
               </svg>
-              Publicando site...
+              Publicando...
             </>
-          ) : '🚀 Publicar Site'}
+          ) : deployed ? '🔄 Republicar Site' : '🚀 Publicar Site'}
         </button>
-      )}
+
+        {deployed && (
+          <button
+            type="button"
+            onClick={handleRedeploy}
+            disabled={loading}
+            className="rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-slate-700 disabled:opacity-50"
+          >
+            ✏️ Alterar e republicar
+          </button>
+        )}
+      </div>
 
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -129,6 +197,7 @@ export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: Inf
         </div>
       )}
 
+      {/* Resultado */}
       {deployed && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-3">
           <p className="text-sm font-bold text-emerald-300">✅ Site publicado com sucesso!</p>
@@ -151,9 +220,25 @@ export default function InfraBlock({ clientId, razaoSocial, onDomainReady }: Inf
             </div>
           </div>
 
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-300">
-            <strong>Próximo passo:</strong> Vá ao Meta Business Manager → Configurações → Domínios → Adicione <strong>{deployed.workerUrl}</strong> e clique em verificar.
-          </div>
+          {/* Instruções por método */}
+          {method === 'meta_tag' && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-300 space-y-1">
+              <p className="font-bold">📋 Próximo passo — Meta Tag:</p>
+              <p>1. Vá em <strong>Meta Business Manager → Configurações → Domínios</strong></p>
+              <p>2. Adicione o domínio: <span className="font-mono text-amber-200">{deployed.workerUrl}</span></p>
+              <p>3. Escolha <strong>"Meta tag"</strong> e clique em <strong>Verificar domínio</strong></p>
+            </div>
+          )}
+
+          {method === 'html_file' && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-300 space-y-1">
+              <p className="font-bold">📋 Próximo passo — Arquivo HTML:</p>
+              <p>1. Vá em <strong>Meta Business Manager → Configurações → Domínios</strong></p>
+              <p>2. Adicione o domínio: <span className="font-mono text-amber-200">{deployed.workerUrl}</span></p>
+              <p>3. Escolha <strong>"Arquivo HTML"</strong> e clique em <strong>Verificar domínio</strong></p>
+              <p>4. O arquivo está disponível em: <span className="font-mono text-amber-200">{deployed.workerUrl}/.well-known/facebook-domain-verification.html</span></p>
+            </div>
+          )}
         </div>
       )}
     </div>

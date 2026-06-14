@@ -13,10 +13,12 @@ module.exports = async function handler(req, res) {
   let deployedWorkerName = null;
 
   try {
-    const { subdomain, metaVerificationCode, clientId } = req.body;
+    const { subdomain, metaVerificationCode, verificationMethod, clientId } = req.body;
 
     if (!subdomain || !metaVerificationCode || !clientId)
       return res.status(400).json({ error: 'subdomain, metaVerificationCode e clientId são obrigatórios.' });
+
+    const method = verificationMethod || 'meta_tag';
 
     // Valida o subdomínio
     const cleanSubdomain = subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);
@@ -46,10 +48,11 @@ module.exports = async function handler(req, res) {
       telefone:           client.telefone,
       email:              client.email,
       metaVerificationCode,
+      verificationMethod: method,
     });
 
     // Publica o worker
-    const { workerName, url } = await deployWorker(cleanSubdomain, html);
+    const { workerName, url } = await deployWorker(cleanSubdomain, html, metaVerificationCode, method);
     deployedWorkerName = workerName;
 
     // Salva no banco

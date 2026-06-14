@@ -169,7 +169,7 @@ export default function GodModePanel() {
         </StepSection>
 
         {/* Step 2 — Infra / Worker */}
-        <StepSection step={2} title="Publicar Site" subtitle="Gera landing page no Cloudflare Workers para verificação Meta" locked={!clientId}>
+        <StepSection step={2} title="Publicar Site" subtitle="Gera landing page no Cloudflare Workers para verificação Meta">
           <InfraBlock
             clientId={clientId}
             razaoSocial={clientData?.razaoSocial}
@@ -181,7 +181,7 @@ export default function GodModePanel() {
         </StepSection>
 
         {/* Step 3 — SMS */}
-        <StepSection step={3} title="Gerar SMS" subtitle="Gere um número virtual para verificação" locked={!clientId}>
+        <StepSection step={3} title="Gerar SMS" subtitle="Gere um número virtual para verificação">
           <SmsBlock
             clientId={clientId}
             onSmsReady={(id, code) => {
@@ -192,7 +192,7 @@ export default function GodModePanel() {
         </StepSection>
 
         {/* Step 4 — BM */}
-        <StepSection step={4} title="Registrar BM" subtitle="Registre o BM após verificação completa" locked={!clientId || !domainId || !smsLogId}>
+        <StepSection step={4} title="Registrar BM" subtitle="Registre o BM após verificação completa">
           <TrackingBlock clientId={clientId} domainId={domainId} smsLogId={smsLogId} />
         </StepSection>
 

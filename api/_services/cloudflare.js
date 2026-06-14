@@ -74,8 +74,11 @@ function slugify(razaoSocial) {
 
 /**
  * Gera a landing page HTML completa para verificação Meta.
+ * Suporta dois métodos:
+ *  - meta_tag: inclui <meta name="facebook-domain-verification"> no <head>
+ *  - html_file: o worker serve o arquivo de verificação em /.well-known/...
  */
-function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, metaVerificationCode }) {
+function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, metaVerificationCode, verificationMethod }) {
   function esc(v) {
     return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
@@ -92,7 +95,10 @@ function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco
   const razaoEsc = esc(razaoSocial);
   const cnpjFmt = esc(formatCnpj(cnpj));
   const enderecoFmt = [esc(endereco), municipio && uf ? `${esc(municipio)} - ${esc(uf)}` : '', formatCep(cep)].filter(Boolean).join(', ');
-  const metaTag = metaVerificationCode ? `\n  <meta name="facebook-domain-verification" content="${esc(metaVerificationCode)}" />` : '';
+  // Meta tag só no <head> se método for meta_tag
+  const metaTag = (verificationMethod === 'meta_tag' && metaVerificationCode)
+    ? `\n  <meta name="facebook-domain-verification" content="${esc(metaVerificationCode)}" />`
+    : '';
   const atividade = esc(atividadePrincipal);
   const tel = esc(telefone);
   const mail = esc(email);
@@ -167,27 +173,42 @@ function buildLandingHtml({ subdomain, razaoSocial, nomeFantasia, cnpj, endereco
 
 /**
  * Publica (ou atualiza) um Cloudflare Worker com o HTML da landing page.
- * Usa a API de upload de script simples (application/javascript).
+ * Suporta dois métodos de verificação Meta:
+ *  - meta_tag: meta tag no <head> da landing page
+ *  - html_file: serve arquivo em /.well-known/facebook-domain-verification.html
  * URL final: https://<workerName>.zaplifydisparo.workers.dev
  */
-async function deployWorker(subdomain, htmlContent) {
+async function deployWorker(subdomain, htmlContent, metaVerificationCode, verificationMethod) {
   const accountId = env.cloudflareAccountId;
   const workersDomain = env.cloudflareWorkersSubdomain;
-  // Nome único: subdomain-workerdomain (máx 64 chars)
   const workerName = `${subdomain}-${workersDomain}`.slice(0, 64);
 
-  // Worker script em ES Module format — embute o HTML como string
-  const workerScript = `const HTML = ${JSON.stringify(htmlContent)};
+  // Conteúdo do arquivo de verificação HTML (método html_file)
+  const verificationFileHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${metaVerificationCode || ''}</body></html>`;
+  const verificationFilePath = '/.well-known/facebook-domain-verification.html';
+
+  // Worker script em ES Module — roteia por URL
+  const workerScript = `const MAIN_HTML = ${JSON.stringify(htmlContent)};
+const VERIFY_HTML = ${JSON.stringify(verificationFileHtml)};
+const VERIFY_PATH = ${JSON.stringify(verificationFilePath)};
+const METHOD = ${JSON.stringify(verificationMethod || 'meta_tag')};
+
 export default {
   async fetch(request) {
-    return new Response(HTML, {
+    const url = new URL(request.url);
+    // Serve arquivo de verificação para qualquer método (por segurança)
+    if (url.pathname === VERIFY_PATH) {
+      return new Response(VERIFY_HTML, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
+      });
+    }
+    return new Response(MAIN_HTML, {
       headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
     });
   },
 };`;
 
   try {
-    // Upload via multipart/form-data usando boundary manual (sem dependência externa)
     const boundary = `----FormBoundary${Date.now()}`;
     const metadataJson = JSON.stringify({
       main_module: 'worker.js',
