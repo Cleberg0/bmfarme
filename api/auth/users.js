@@ -9,7 +9,37 @@ module.exports = async function handler(req, res) {
   const user = verifyAuth(req, res);
   if (!user) return;
 
-  // Apenas ADMIN pode gerenciar usuários
+  // PATCH (troca de senha/nome) — qualquer usuário pode, sem exigir ADMIN
+  if (req.method === 'PATCH') {
+    try {
+      const { id } = req.query;
+      if (!id) return res.status(400).json({ error: 'id é obrigatório.' });
+      if (user.role !== 'ADMIN' && id !== user.id)
+        return res.status(403).json({ error: 'Sem permissão para alterar outro usuário.' });
+
+      const { password, name } = req.body;
+      const data = {};
+      if (name) data.name = name;
+      if (password) {
+        if (password.length < 6)
+          return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres.' });
+        data.password = await bcrypt.hash(password, 10);
+      }
+      if (Object.keys(data).length === 0)
+        return res.status(400).json({ error: 'Nenhum campo para atualizar.' });
+
+      const updated = await prisma.user.update({
+        where: { id },
+        data,
+        select: { id: true, email: true, name: true, role: true },
+      });
+      return res.status(200).json(updated);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Apenas ADMIN pode gerenciar usuários abaixo
   if (user.role !== 'ADMIN')
     return res.status(403).json({ error: 'Apenas administradores podem gerenciar usuários.' });
 

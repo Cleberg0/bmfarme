@@ -16,6 +16,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, role: string) => Promise<void>;
   logout: () => void;
+  changePassword: (newPassword: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -58,14 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const changePassword = useCallback(async (newPassword: string) => {
+    if (!user) throw new Error('Não autenticado.');
+    await api.patch(`/auth/users?id=${user.id}`, { password: newPassword });
+  }, [user]);
+
   const value = useMemo<AuthContextValue>(() => ({
-    token,
-    user,
-    isAuthenticated: Boolean(token),
-    login,
-    register,
-    logout,
-  }), [login, logout, token, user, register]);
+    token, user, isAuthenticated: Boolean(token),
+    login, register, logout, changePassword,
+  }), [login, logout, token, user, register, changePassword]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

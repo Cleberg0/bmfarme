@@ -7,6 +7,7 @@ import TrackingBlock from './blocks/TrackingBlock';
 import DashboardPanel from './DashboardPanel';
 import WabaPanel from './WabaPanel';
 import CnpjCardModal from './CnpjCardModal';
+import ProfileModal from './ProfileModal';
 
 type ClientData = {
   razaoSocial: string;
@@ -44,14 +45,16 @@ export default function GodModePanel() {
   const [smsLogId, setSmsLogId]     = useState<string | null>(null);
   const [smsCode, setSmsCode]       = useState<string | null>(null);
   const [smsPhone, setSmsPhone]     = useState<string | null>(null);
-  const [showCard, setShowCard]         = useState(false);
+  const [showCard, setShowCard]           = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
-  const [showWaba, setShowWaba]         = useState(false);
+  const [showWaba, setShowWaba]           = useState(false);
+  const [showProfile, setShowProfile]     = useState(false);
 
   if (showDashboard) return <DashboardPanel onBack={() => setShowDashboard(false)} />;
   if (showWaba)      return <WabaPanel onBack={() => setShowWaba(false)} />;
 
   const resetPipeline = () => {
+    if (!confirm('Iniciar novo farm? Os dados atuais serão limpos.')) return;
     setClientId(null);
     setClientData(null);
     setDomainId(null);
@@ -91,6 +94,11 @@ export default function GodModePanel() {
               <button type="button" onClick={resetPipeline}
                 className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-400 transition hover:bg-amber-500/20">
                 🔄 Novo Farm
+              </button>
+              <button type="button" onClick={() => setShowProfile(true)}
+                className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-700"
+                title="Meu perfil / trocar senha">
+                👤
               </button>
               <button type="button" onClick={logout}
                 className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-700">
@@ -183,6 +191,11 @@ export default function GodModePanel() {
       {/* Modal cartão CNPJ */}
       {showCard && clientId && (
         <CnpjCardModal clientId={clientId} onClose={() => setShowCard(false)} />
+      )}
+
+      {/* Modal perfil */}
+      {showProfile && (
+        <ProfileModal onClose={() => setShowProfile(false)} />
       )}
     </>
   );

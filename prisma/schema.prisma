@@ -27,6 +27,13 @@ enum SmsStatus {
   FAILED
 }
 
+enum BmStatus {
+  ACTIVE
+  SUSPENDED
+  RESTRICTED
+  DISABLED
+}
+
 model User {
   id        String    @id @default(cuid())
   email     String    @unique
@@ -35,10 +42,10 @@ model User {
   role      UserRole  @default(OPERATOR)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  clients   Client[]
-  domains   Domain[]
-  smsLogs   SmsLog[]
-  bmAssets  BmAsset[]
+  clients    Client[]
+  domains    Domain[]
+  smsLogs    SmsLog[]
+  bmAssets   BmAsset[]
   wabaAssets WabaAsset[]
 }
 
@@ -113,12 +120,14 @@ model BmAsset {
   id          String      @id @default(cuid())
   bmId        String
   profileUsed String
+  status      BmStatus    @default(ACTIVE)
   notes       String?
   clientId    String
   domainId    String
   smsLogId    String
   userId      String
   createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   client      Client      @relation(fields: [clientId], references: [id], onDelete: Restrict)
   domain      Domain      @relation(fields: [domainId], references: [id], onDelete: Restrict)
   smsLog      SmsLog      @relation(fields: [smsLogId], references: [id], onDelete: Restrict)
