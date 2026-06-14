@@ -1,18 +1,87 @@
 /**
- * Serviço de consulta de CNPJ via data-api.click
- * Endpoint: GET https://data-api.click/api/funcionarios.php?funcionarios={CNPJ}&key={KEY}
+ * Serviço de consulta de CNPJ
+ * Primário: BrasilAPI (gratuita, sem chave, dados da Receita Federal)
+ *   https://brasilapi.com.br/api/cnpj/v1/:cnpj
+ * Fallback: ReceitaWS
+ *   https://receitaws.com.br/v1/cnpj/:cnpj
  */
 
 const axios = require('axios');
-const env = require('../config/env');
-
-const dataApi = axios.create({
-  baseURL: 'https://data-api.click/api',
-  timeout: 15000
-});
 
 function normalizeCnpj(cnpj) {
   return String(cnpj || '').replace(/\D/g, '');
+}
+
+async function lookupViaBrasilAPI(cnpj) {
+  const res = await axios.get(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
+    timeout: 15000,
+    headers: { Accept: 'application/json' }
+  });
+  const d = res.data;
+
+  const enderecoParts = [
+    d.descricao_tipo_de_logradouro
+      ? `${d.descricao_tipo_de_logradouro} ${d.logradouro}`
+      : d.logradouro,
+    d.numero,
+    d.complemento,
+    d.bairro,
+    d.municipio,
+    d.uf
+  ].filter(Boolean);
+
+  return {
+    cnpj,
+    razaoSocial: d.razao_social || d.nome_fantasia || '',
+    nomeFantasia: d.nome_fantasia || '',
+    endereco: enderecoParts.join(', '),
+    cep: (d.cep || '').replace(/\D/g, ''),
+    municipio: d.municipio || '',
+    uf: d.uf || '',
+    situacao: d.descricao_situacao_cadastral || '',
+    atividadePrincipal: d.cnae_fiscal_descricao || '',
+    telefone: d.ddd_telefone_1
+      ? `(${d.ddd_telefone_1}) ${d.telefone_1 || ''}`.trim()
+      : '',
+    email: d.email || '',
+    raw: d
+  };
+}
+
+async function lookupViaReceitaWS(cnpj) {
+  const res = await axios.get(`https://receitaws.com.br/v1/cnpj/${cnpj}`, {
+    timeout: 15000,
+    headers: { Accept: 'application/json' }
+  });
+  const d = res.data;
+
+  if (d.status === 'ERROR') {
+    throw new Error(d.message || 'CNPJ não encontrado.');
+  }
+
+  const enderecoParts = [
+    d.logradouro,
+    d.numero,
+    d.complemento,
+    d.bairro,
+    d.municipio,
+    d.uf
+  ].filter(Boolean);
+
+  return {
+    cnpj,
+    razaoSocial: d.nome || '',
+    nomeFantasia: d.fantasia || '',
+    endereco: enderecoParts.join(', '),
+    cep: (d.cep || '').replace(/\D/g, ''),
+    municipio: d.municipio || '',
+    uf: d.uf || '',
+    situacao: d.situacao || '',
+    atividadePrincipal: d.atividade_principal?.[0]?.text || '',
+    telefone: d.telefone || '',
+    email: d.email || '',
+    raw: d
+  };
 }
 
 async function lookupCnpj(cnpj) {
@@ -24,75 +93,22 @@ async function lookupCnpj(cnpj) {
     throw error;
   }
 
-  let response;
+  // Tenta BrasilAPI primeiro, fallback para ReceitaWS
   try {
-    response = await dataApi.get('/funcionarios.php', {
-      params: {
-        funcionarios: normalizedCnpj,
-        key: env.dataApiKey
-      }
-    });
-  } catch (error) {
-    const statusCode = error.response?.status || 502;
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      'Falha ao consultar CNPJ na data-api.click.';
-    const serviceError = new Error(message);
-    serviceError.statusCode = statusCode;
-    throw serviceError;
+    return await lookupViaBrasilAPI(normalizedCnpj);
+  } catch (errBrasil) {
+    try {
+      return await lookupViaReceitaWS(normalizedCnpj);
+    } catch (errReceita) {
+      const msg =
+        errBrasil.response?.data?.message ||
+        errReceita.message ||
+        'Falha ao consultar CNPJ.';
+      const error = new Error(msg);
+      error.statusCode = 404;
+      throw error;
+    }
   }
-
-  const payload = response.data;
-
-  // A API pode retornar array ou objeto único
-  const data = Array.isArray(payload) ? payload[0] : payload;
-
-  if (!data) {
-    const error = new Error('data-api.click retornou resposta vazia para este CNPJ.');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  // Campos possíveis retornados pela API
-  const razaoSocial =
-    data.razao_social ||
-    data.razaoSocial ||
-    data.nome ||
-    data.empresa ||
-    data.nome_empresarial ||
-    null;
-
-  if (!razaoSocial) {
-    const error = new Error('Resposta da API não contém razão social.');
-    error.statusCode = 502;
-    throw error;
-  }
-
-  // Monta endereço a partir dos campos disponíveis
-  const enderecoParts = [
-    data.logradouro || data.endereco || data.address || '',
-    data.numero ? `nº ${data.numero}` : '',
-    data.complemento || '',
-    data.bairro || '',
-    data.municipio || data.cidade || data.city || '',
-    data.uf || data.estado || ''
-  ].filter(Boolean);
-
-  const endereco = enderecoParts.join(', ');
-  const cep = (data.cep || data.zipCode || '').replace(/\D/g, '');
-
-  return {
-    cnpj: normalizedCnpj,
-    razaoSocial,
-    endereco,
-    cep,
-    // Dados extras retornados pela API (útil para exibir no frontend)
-    raw: data
-  };
 }
 
-module.exports = {
-  lookupCnpj,
-  normalizeCnpj
-};
+module.exports = { lookupCnpj, normalizeCnpj };

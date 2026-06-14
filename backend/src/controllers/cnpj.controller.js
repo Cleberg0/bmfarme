@@ -13,15 +13,29 @@ async function getCnpj(req, res) {
       },
       update: {
         razaoSocial: cnpjData.razaoSocial,
+        nomeFantasia: cnpjData.nomeFantasia || null,
         endereco: cnpjData.endereco,
         cep: cnpjData.cep,
+        municipio: cnpjData.municipio || null,
+        uf: cnpjData.uf || null,
+        situacao: cnpjData.situacao || null,
+        atividadePrincipal: cnpjData.atividadePrincipal || null,
+        telefone: cnpjData.telefone || null,
+        email: cnpjData.email || null,
         userId
       },
       create: {
         cnpj: cnpjData.cnpj,
         razaoSocial: cnpjData.razaoSocial,
+        nomeFantasia: cnpjData.nomeFantasia || null,
         endereco: cnpjData.endereco,
         cep: cnpjData.cep,
+        municipio: cnpjData.municipio || null,
+        uf: cnpjData.uf || null,
+        situacao: cnpjData.situacao || null,
+        atividadePrincipal: cnpjData.atividadePrincipal || null,
+        telefone: cnpjData.telefone || null,
+        email: cnpjData.email || null,
         userId
       }
     });

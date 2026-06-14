@@ -41,17 +41,24 @@ model User {
 }
 
 model Client {
-  id          String    @id @default(cuid())
-  cnpj        String    @unique
-  razaoSocial String
-  endereco    String
-  cep         String
-  userId      String
-  createdAt   DateTime  @default(now())
-  user        User      @relation(fields: [userId], references: [id], onDelete: Restrict)
-  domains     Domain[]
-  smsLogs     SmsLog[]
-  bmAssets    BmAsset[]
+  id                String    @id @default(cuid())
+  cnpj              String    @unique
+  razaoSocial       String
+  nomeFantasia      String?
+  endereco          String
+  cep               String
+  municipio         String?
+  uf                String?
+  situacao          String?
+  atividadePrincipal String?
+  telefone          String?
+  email             String?
+  userId            String
+  createdAt         DateTime  @default(now())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  domains           Domain[]
+  smsLogs           SmsLog[]
+  bmAssets          BmAsset[]
 }
 
 model Domain {
