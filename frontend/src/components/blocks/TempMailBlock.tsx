@@ -94,10 +94,30 @@ export default function TempMailBlock({ razaoSocial, onEmailGenerated }: TempMai
           </div>
           <div className="divide-y divide-slate-800">
             {messages.map(m => (
-              <div key={m._id.$oid} className="px-4 py-3">
-                <p className="text-xs font-semibold text-slate-300 truncate">{m.mail_subject || '(sem assunto)'}</p>
-                <p className="text-xs text-slate-500 mt-0.5">De: {m.mail_from}</p>
-                {m.mail_preview && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{m.mail_preview}</p>}
+              <div key={m._id.$oid} className="px-4 py-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-300 truncate">{m.mail_subject || '(sem assunto)'}</p>
+                    <p className="text-xs text-slate-500">De: {m.mail_from}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const { data } = await api.get(`/auth/register?action=message&id=${m._id.$oid}`);
+                        const body = data.mail_html || data.mail_text_only || data.mail_body || 'Sem conteúdo';
+                        const blob = new Blob([body], { type: 'text/html' });
+                        const url = URL.createObjectURL(blob);
+                        window.open(url, '_blank');
+                        setTimeout(() => URL.revokeObjectURL(url), 60000);
+                      } catch { /* silencioso */ }
+                    }}
+                    className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition"
+                  >
+                    👁️ Ver email
+                  </button>
+                </div>
+                {m.mail_preview && <p className="text-xs text-slate-400 line-clamp-2">{m.mail_preview}</p>}
               </div>
             ))}
           </div>
