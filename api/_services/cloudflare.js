@@ -99,8 +99,13 @@ function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, cep, muni
   const smsCodeFmt  = esc(smsCode || '');
 
   // Meta tag só se método for meta_tag
-  const metaTag = (verificationMethod !== 'html_file' && metaVerificationCode)
-    ? `<meta name="facebook-domain-verification" content="${esc(metaVerificationCode)}" />`
+  // Extrai só o código caso o usuário cole o HTML completo da meta tag
+  let verificationCode = metaVerificationCode || '';
+  const contentMatch = verificationCode.match(/content=["']([^"']+)["']/);
+  if (contentMatch) verificationCode = contentMatch[1];
+
+  const metaTag = (verificationMethod !== 'html_file' && verificationCode)
+    ? `<meta name="facebook-domain-verification" content="${esc(verificationCode)}" />`
     : '';
 
   return `<!DOCTYPE html>
@@ -209,8 +214,13 @@ async function deployWorker(subdomain, htmlContent, metaVerificationCode, verifi
   const workersDomain = env.cloudflareWorkersSubdomain;
   const workerName = `${subdomain}-${workersDomain}`.slice(0, 64);
 
+  // Extrai só o código de verificação se vier como HTML completo
+  let cleanCode = metaVerificationCode || '';
+  const codeMatch = cleanCode.match(/content=["']([^"']+)["']/);
+  if (codeMatch) cleanCode = codeMatch[1];
+
   // Conteúdo do arquivo de verificação HTML (método html_file)
-  const verificationFileHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${metaVerificationCode || ''}</body></html>`;
+  const verificationFileHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><meta name="facebook-domain-verification" content="${cleanCode}" /></body></html>`;
   const verificationFilePath = '/.well-known/facebook-domain-verification.html';
 
   // Worker script em ES Module — roteia por URL
