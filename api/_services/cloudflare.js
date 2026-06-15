@@ -164,7 +164,18 @@ function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, cep, muni
   const razaoFmt    = esc(razaoSocial);
   const cnpjFmt     = esc(formatCnpj(cnpj));
   const enderecoFmt = [esc(endereco), municipio && uf ? `${esc(municipio)}, ${esc(uf)}` : (esc(municipio) || esc(uf)), cep ? `CEP: ${formatCep(cep)}` : ''].filter(Boolean).join(' — ');
-  const telFmt      = esc(smsPhone || telefone || '');
+
+  // Formata telefone removendo código do país
+  function fmtPhone(t) {
+    if (!t) return '';
+    let n = String(t).replace(/\D/g, '');
+    if (n.length >= 12 && n.startsWith('55')) n = n.slice(2);
+    if (n.length === 10) return `(${n.slice(0,2)}) ${n.slice(2,6)}-${n.slice(6)}`;
+    if (n.length === 11) return `(${n.slice(0,2)}) ${n.slice(2,7)}-${n.slice(7)}`;
+    return t;
+  }
+
+  const telFmt      = esc(fmtPhone(smsPhone || telefone || ''));
   const mailFmt     = esc(email || '');
   const atividadeFmt = esc(atividadePrincipal || '');
   const smsCodeFmt  = esc(smsCode || '');

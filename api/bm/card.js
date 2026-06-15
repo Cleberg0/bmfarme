@@ -294,10 +294,13 @@ module.exports = async function handler(req, res) {
     ]);
     if (!client) return null;
 
-    // Formata telefone: "6185494555" → "(61) 8549-4555"
+    // Formata telefone: "5511953090612" → "(11) 95309-0612", "6185494555" → "(61) 8549-4555"
     function fmtPhone(tel) {
       if (!tel) return '';
-      const d = String(tel).replace(/\D/g, '');
+      let d = String(tel).replace(/\D/g, '');
+      // Remove código do país 55 se presente
+      if (d.length === 13 && d.startsWith('55')) d = d.slice(2);
+      if (d.length === 12 && d.startsWith('55')) d = d.slice(2);
       if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
       if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
       return tel;
