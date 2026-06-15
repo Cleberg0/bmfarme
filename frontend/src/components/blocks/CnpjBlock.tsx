@@ -168,8 +168,8 @@ export default function CnpjBlock({ onClientReady, workerUrl }: CnpjBlockProps) 
 
           {/* Campos copiáveis — dados originais em MAIÚSCULO como vem da Receita */}
           <div className="grid gap-3 sm:grid-cols-2">
-            <FieldCopy label="Razão Social" value={client.razaoSocial} />
-            {client.nomeFantasia && <FieldCopy label="Nome Fantasia" value={client.nomeFantasia} />}
+            <FieldCopy label="Razão Social" value={cleanRazao(client.razaoSocial)} />
+            {client.nomeFantasia && <FieldCopy label="Nome Fantasia" value={cleanRazao(client.nomeFantasia)} />}
             <FieldCopy label="CNPJ (EIN)" value={client.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')} />
             {client.situacao && <FieldCopy label="Situação" value={client.situacao} />}
           </div>
