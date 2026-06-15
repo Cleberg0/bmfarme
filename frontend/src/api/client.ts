@@ -22,7 +22,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    // Só faz logout se o 401 vier de uma rota que requer autenticação
+    // e não for uma rota de email temporário ou outras rotas auxiliares
+    const url = err.config?.url || '';
+    const isAuthRoute = !url.includes('/auth/register');
+    if (err.response?.status === 401 && isAuthRoute) {
       localStorage.removeItem('bmfarm.token');
       localStorage.removeItem('bmfarm.user');
       window.location.reload();

@@ -57,11 +57,10 @@ export default function TempMailBlock({ razaoSocial, onEmailGenerated }: TempMai
     finally { setLoading(false); }
   };
 
-  // Auto-gera quando razão social chega
+  // Não auto-gera — usuário clica manualmente
   useEffect(() => {
-    if (razaoSocial && !email) { generate(); }
     return () => stopPolling();
-  }, [razaoSocial]); // eslint-disable-line
+  }, [stopPolling]);
 
   return (
     <div className="space-y-3">
