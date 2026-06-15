@@ -164,17 +164,21 @@ export default function CnpjBlock({ onClientReady }: CnpjBlockProps) {
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">
-              <FieldCopy label="Endereço" value={client.endereco} />
+              <FieldCopy label="Endereço" value={toTitleCase(client.endereco)} />
             </div>
             <FieldCopy label="CEP" value={client.cep ? client.cep.replace(/(\d{5})(\d{3})/, '$1-$2') : ''} />
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <FieldCopy label="Município / UF" value={client.municipio && client.uf ? `${client.municipio} / ${client.uf}` : (client.municipio || client.uf)} />
+            <FieldCopy label="Município / UF" value={
+              client.municipio && client.uf
+                ? `${toTitleCase(client.municipio)} / ${client.uf}`
+                : toTitleCase(client.municipio || client.uf || '')
+            } />
             <FieldCopy label="Telefone" value={client.telefone} />
             <FieldCopy label="E-mail" value={client.email} />
           </div>
           {client.atividadePrincipal && (
-            <FieldCopy label="Atividade Principal" value={client.atividadePrincipal} />
+            <FieldCopy label="Atividade Principal" value={toTitleCase(client.atividadePrincipal)} />
           )}
 
           {/* Email temporário — seção separada */}
