@@ -159,7 +159,7 @@ function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, cep, muni
     const d = String(c || '').replace(/\D/g, '');
     return d.replace(/^(\d{5})(\d{3})$/, '$1-$2') || c;
   }
-  function cleanName(s) { return String(s || '').replace(/^[\d.\s-]+/, '').trim(); }
+  function cleanName(s) { return String(s || '').replace(/^[\d.\s-]+/, '').replace(/[\d.\s-]+$/, '').trim(); }
   function fmtPhone(t) {
     if (!t) return '';
     let n = String(t).replace(/\D/g, '');

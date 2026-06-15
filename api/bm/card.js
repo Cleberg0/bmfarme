@@ -139,7 +139,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#000;background
   <!-- Nome Empresarial -->
   <div class="row">
     <span class="fl">Nome Empresarial</span>
-    <div class="fv">${esc(d.razaoSocial.replace(/^[\d.\s-]+/, '').trim())}</div>
+    <div class="fv">${esc(d.razaoSocial.replace(/^[\d.\s-]+/, '').replace(/[\d.\s-]+$/, '').trim())}</div>
   </div>
 
   <!-- Nome Fantasia / Porte -->

@@ -41,9 +41,9 @@ function toTitleCase(str: string): string {
     .join(' ');
 }
 
-// Remove números/pontos do início da razão social (ex: "65.682.194 THAIS..." → "THAIS...")
+// Remove números/pontos do início E do final da razão social (ex: "65.682.194 THAIS..." ou "RAPHAEL SILVA 33152044895")
 function cleanRazao(str: string): string {
-  return str.replace(/^[\d.\s-]+/, '').trim();
+  return str.replace(/^[\d.\s-]+/, '').replace(/[\d.\s-]+$/, '').trim();
 }
 
 function FieldCopy({ label, value }: { label: string; value?: string }) {
