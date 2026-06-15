@@ -24,8 +24,9 @@ module.exports = async function handler(req, res) {
     const clientData = {
       razaoSocial:        d.razaoSocial                               || null,
       nomeFantasia:       d.nomeFantasia                              || null,
-      // endereco é obrigatório no schema — usa logradouro ou bairro como fallback
-      endereco:           d.endereco || d.bairro || d.municipio       || '',
+      // endereco é obrigatório no schema — usa logradouro ou string vazia
+      // (quando BrasilAPI não retorna logradouro, o usuário preenche manualmente no cartão)
+      endereco:           d.endereco                               || '',
       numero:             d.numero                                    || null,
       complemento:        d.complemento                               || null,
       bairro:             d.bairro                                    || null,

@@ -174,6 +174,11 @@ export default function CnpjBlock({ onClientReady, workerUrl }: CnpjBlockProps) 
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">📍 Endereço (campos separados para o Meta)</p>
             <div className="grid gap-2 sm:grid-cols-2">
               <FieldCopy label="Endereço (logradouro)" value={client.endereco} />
+              {!client.endereco && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                  ⚠️ Logradouro não disponível na Receita Federal — preencha manualmente no cartão CNPJ
+                </div>
+              )}
               <FieldCopy label="Endereço (continuação / bairro)" value={client.bairro || ''} />
               <FieldCopy label="Cidade" value={client.municipio} />
               <FieldCopy label="Estado / Província" value={client.uf} />
