@@ -113,14 +113,10 @@ module.exports = async function handler(req, res) {
       email: client.email, smsPhone, smsCode, metaVerificationCode, verificationMethod: method,
     };
 
+    // Tenta IA primeiro (gera site 100% único), fallback pro template estático
     let html = await generateFullSiteHtml(siteParams);
     if (!html) {
-      // Fallback: usa template estático com IA só pra textos
-      const aiContent = await generateAiContent({
-        razaoSocial: client.razaoSocial, atividadePrincipal: client.atividadePrincipal,
-        municipio: client.municipio, uf: client.uf, smsPhone,
-      });
-      html = buildLandingHtml({ ...siteParams, subdomain: cleanSubdomain, aiContent });
+      html = buildLandingHtml({ ...siteParams, subdomain: cleanSubdomain });
     }
 
     // Publica o worker (cria ou atualiza — a API do Cloudflare faz upsert)

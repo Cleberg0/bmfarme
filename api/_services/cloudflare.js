@@ -72,56 +72,45 @@ async function generateFullSiteHtml(params) {
 
   const enderecoParts = [endereco, numero ? `nº ${numero}` : '', bairro, municipio && uf ? `${municipio}/${uf}` : municipio || uf || ''].filter(Boolean).join(', ');
 
-  const prompt = `Crie um site HTML completo, profissional e ÚNICO para esta empresa. A META (Facebook) vai analisar este site para aprovar a verificação do WhatsApp Business. O site precisa passar na verificação imediatamente.
+  // Gera parametros aleatórios pra forçar variação na IA
+  const palettes = ['azul marinho e dourado','verde esmeralda e branco','roxo escuro e prata','vermelho bordô e creme','teal e coral','índigo e laranja','cinza grafite e amarelo','azul petróleo e rosa','marrom terra e verde oliva','preto e dourado','turquesa e cinza','vinho e bege','azul royal e pêssego','verde musgo e terracota','lilás e menta'];
+  const fonts = ['Roboto e Playfair Display','Inter e Lora','Poppins e Merriweather','Open Sans e Crimson Pro','Montserrat e Cormorant','Nunito e DM Serif','Work Sans e Libre Baskerville','Outfit e Spectral','Manrope e Fraunces','Source Sans 3 e Sora','Karla e Bitter','Raleway e Vollkorn','IBM Plex Sans e PT Serif','DM Sans e Noto Serif','Rubik e EB Garamond'];
+  const layouts = ['sidebar esquerda fixa com conteúdo scrollável à direita','hero banner grande no topo com cards abaixo','split screen 50/50 com lado esquerdo colorido','card centralizado flutuante com background sutil','layout minimalista empilhado com tipografia grande','grid de 2 colunas tipo dashboard','estilo magazine editorial com header grande e seções em blocos','painéis flutuantes com sombras empilhados verticalmente','background escuro com card branco overlay','layout com navegação lateral e conteúdo em abas visuais'];
 
-DADOS DA EMPRESA:
-- Nome: ${displayName}
-- Razão Social: ${cleanName(razaoSocial)}
-- CNPJ: ${fmtCnpj(cnpj)}
-- Endereço: ${enderecoParts}${cep ? `, CEP: ${cep}` : ''}
-- Email: ${email || 'contato@empresa.com.br'}
+  const chosenPalette = palettes[Math.floor(Math.random() * palettes.length)];
+  const chosenFont = fonts[Math.floor(Math.random() * fonts.length)];
+  const chosenLayout = layouts[Math.floor(Math.random() * layouts.length)];
+  const seed = Math.floor(Math.random() * 99999);
 
-ESTRUTURA OBRIGATÓRIA DO SITE (todas as seções abaixo DEVEM existir):
+  const prompt = `[SEED:${seed}] Crie um site HTML COMPLETO usando EXATAMENTE estas escolhas de design:
+- PALETA DE CORES: ${chosenPalette}
+- FONTES GOOGLE: ${chosenFont}
+- LAYOUT: ${chosenLayout}
 
-1. HEADER/NAVEGAÇÃO - com nome da empresa e menu (Home, Quem Somos, Atendimento, Privacidade, Termos, Contato)
+EMPRESA: ${displayName}
+RAZÃO SOCIAL: ${cleanName(razaoSocial)}
+CNPJ: ${fmtCnpj(cnpj)}
+ENDEREÇO: ${enderecoParts}${cep ? `, CEP: ${cep}` : ''}
+EMAIL: ${email || 'contato@empresa.com.br'}
 
-2. HOME - Título: "Atendimento informativo e sob demanda". Texto: "Somos uma empresa que atua exclusivamente no atendimento de pessoas que entram em contato conosco de forma voluntária para esclarecer dúvidas, solicitar informações ou dar continuidade a atendimentos previamente iniciados. Não realizamos contatos não solicitados."
+SEÇÕES OBRIGATÓRIAS:
+1. HEADER com nome e navegação (Home, Quem Somos, Atendimento, Privacidade, Termos, Contato)
+2. HOME: "Atendimento informativo e sob demanda. Somos uma empresa que atua exclusivamente no atendimento de pessoas que entram em contato conosco de forma voluntária. Não realizamos contatos não solicitados."
+3. QUEM SOMOS: "A ${displayName} atua de forma ética e transparente, oferecendo atendimento informativo e suporte personalizado apenas para pessoas que demonstram interesse prévio em nossos serviços."
+4. COMO FUNCIONA: lista com 5 bullets (contato iniciado pelo usuário, canais oficiais, sem listas compradas, pode parar quando quiser, segue políticas WhatsApp/Meta)
+5. POLÍTICA DE PRIVACIDADE: dados só pra responder solicitações, sem compartilhar com terceiros, sem envios automáticos
+6. TERMOS DE USO: comunicação espontânea, sem promoções não solicitadas
+7. CONTATO: email + formulário (nome, email, mensagem) com onsubmit="event.preventDefault();alert('Mensagem enviada.')"
+8. RODAPÉ: CNPJ, razão social, links Termos e Privacidade, endereço
 
-3. QUEM SOMOS - Texto: "A ${displayName} atua de forma ética e transparente, oferecendo atendimento informativo e suporte personalizado apenas para pessoas que demonstram interesse prévio em nossos serviços. Toda comunicação é iniciada pelo próprio usuário, por meio de nossos canais oficiais."
-
-4. COMO FUNCIONA O ATENDIMENTO - Lista:
-• O primeiro contato é sempre iniciado pelo próprio usuário.
-• Respondemos apenas mensagens recebidas em nossos canais oficiais.
-• Não utilizamos listas compradas, bases de terceiros ou contatos aleatórios.
-• O usuário pode solicitar a interrupção do atendimento a qualquer momento.
-• Todas as mensagens seguem as políticas do WhatsApp Business e da Meta.
-
-5. POLÍTICA DE PRIVACIDADE - Texto: "Utilizamos os dados fornecidos exclusivamente para responder solicitações feitas de forma voluntária pelo usuário. Não compartilhamos informações com terceiros. Não realizamos envios automáticos sem consentimento."
-
-6. TERMOS DE USO - Texto: "Ao entrar em contato conosco, o usuário declara que iniciou a comunicação de forma espontânea e concorda em receber respostas relacionadas à sua solicitação. Não realizamos comunicações promocionais não solicitadas."
-
-7. CONTATO - Email institucional + formulário simples (nome, email, mensagem) com onsubmit="event.preventDefault();alert('Mensagem enviada com sucesso.')"
-
-8. RODAPÉ - Deve conter: CNPJ (${fmtCnpj(cnpj)}), nome da empresa (${cleanName(razaoSocial)}), links para Termos de Serviço e Política de Privacidade, endereço completo.
-
-REGRAS DE DESIGN:
-- HTML completo com DOCTYPE, head (charset UTF-8, viewport), style inline
-- Use @import do Google Fonts (2 fontes diferentes)
-- Paleta de cores ÚNICA e harmônica (varie a cada geração, NÃO use sempre verde/azul)
-- Layout DIFERENTE a cada geração (varie estrutura, cores, fontes)
-- Responsivo (media query mobile)
-- NÃO mostrar WhatsApp com CTA agressivo
-- NÃO mostrar código de atividades econômicas secundárias
-- Visual limpo, institucional, confiável
-- Mínimo 1000px de conteúdo
-
-RETORNE APENAS o HTML puro começando com <!DOCTYPE html>. SEM markdown, SEM explicações, SEM backticks.`;
+REGRAS: HTML completo com DOCTYPE. CSS inline no <style>. @import Google Fonts. Responsivo. NÃO mostrar WhatsApp. Mínimo 1000px conteúdo.
+RETORNE APENAS HTML puro. SEM markdown. SEM backticks. SEM explicações. Começa com <!DOCTYPE html>.`;
 
   try {
     const res = await axios.post(
       `https://api.cloudflare.com/client/v4/accounts/${env.cloudflareAccountId}/ai/run/@cf/meta/llama-3-8b-instruct`,
-      { messages: [{ role: 'user', content: prompt }], max_tokens: 4000 },
-      { headers: { Authorization: `Bearer ${env.cloudflareAiToken}`, 'Content-Type': 'application/json' }, timeout: 30000 }
+      { messages: [{ role: 'user', content: prompt }], max_tokens: 4096, temperature: 0.9 },
+      { headers: { Authorization: `Bearer ${env.cloudflareAiToken}`, 'Content-Type': 'application/json' }, timeout: 45000 }
     );
 
     let html = res.data?.result?.response || '';
