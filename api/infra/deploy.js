@@ -25,7 +25,8 @@ module.exports = async function handler(req, res) {
       // Gera novo HTML com o número atualizado
       const html = buildLandingHtml({
         razaoSocial: client.razaoSocial, nomeFantasia: client.nomeFantasia,
-        cnpj: client.cnpj, endereco: client.endereco, cep: client.cep,
+        cnpj: client.cnpj, endereco: client.endereco, numero: client.numero,
+        bairro: client.bairro, cep: client.cep,
         municipio: client.municipio, uf: client.uf, situacao: client.situacao,
         atividadePrincipal: client.atividadePrincipal, telefone: client.telefone,
         email: client.email, smsPhone: newPhone, smsCode: null,
@@ -105,7 +106,8 @@ module.exports = async function handler(req, res) {
     // Gera HTML via IA (100% único) com fallback pro template estático
     const siteParams = {
       razaoSocial: client.razaoSocial, nomeFantasia: client.nomeFantasia,
-      cnpj: client.cnpj, endereco: client.endereco, cep: client.cep,
+      cnpj: client.cnpj, endereco: client.endereco, numero: client.numero,
+      bairro: client.bairro, cep: client.cep,
       municipio: client.municipio, uf: client.uf, situacao: client.situacao,
       atividadePrincipal: client.atividadePrincipal, telefone: client.telefone,
       email: client.email, smsPhone, smsCode, metaVerificationCode, verificationMethod: method,

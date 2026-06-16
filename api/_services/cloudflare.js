@@ -52,7 +52,7 @@ Retorne APENAS um JSON válido com exatamente estas 3 chaves (sem markdown, sem 
 // ─── Gerador de site COMPLETO via IA (layout único a cada chamada) ───────────
 
 async function generateFullSiteHtml(params) {
-  const { razaoSocial, nomeFantasia, cnpj, endereco, municipio, uf,
+  const { razaoSocial, nomeFantasia, cnpj, endereco, numero, bairro, cep, municipio, uf,
           atividadePrincipal, telefone, email, smsPhone, smsCode,
           metaVerificationCode, verificationMethod } = params;
 
@@ -70,29 +70,33 @@ async function generateFullSiteHtml(params) {
   const displayName = cleanName(nomeFantasia || razaoSocial);
   const phone = fmtPhone(smsPhone || telefone || '');
 
-  const prompt = `Você é um web designer expert. Crie uma landing page HTML COMPLETA e ÚNICA para esta empresa.
+  const enderecoParts = [endereco, numero ? `nº ${numero}` : '', bairro, municipio && uf ? `${municipio}/${uf}` : municipio || uf || ''].filter(Boolean).join(', ');
 
-DADOS:
-- Nome: ${displayName}
+  const prompt = `Você é um web designer sênior. Crie uma landing page HTML COMPLETA, PROFISSIONAL e ÚNICA para esta empresa real.
+
+DADOS DA EMPRESA (OBRIGATÓRIO mostrar TODOS no site):
+- Nome Fantasia: ${displayName}
 - Razão Social: ${cleanName(razaoSocial)}
 - CNPJ: ${fmtCnpj(cnpj)}
 - Atividade: ${atividadePrincipal || 'Serviços empresariais'}
-- Endereço: ${endereco || ''}, ${municipio || ''}-${uf || ''}
-- WhatsApp: ${phone || 'Não informado'}${smsCode ? ` (código: ${smsCode})` : ''}
+- Endereço COMPLETO: ${enderecoParts}
+- CEP: ${cep || ''}
+- WhatsApp Oficial: ${phone || 'Não informado'}${smsCode ? ` (código verificação: ${smsCode})` : ''}
 - Email: ${email || ''}
 
-REQUISITOS:
-1. HTML completo com DOCTYPE, head (charset, viewport, style inline), body
-2. Use @import do Google Fonts no style (escolha fontes diferentes a cada vez)
-3. Layout CRIATIVO - varie entre: sidebar, hero+cards, split-screen, minimal, dashboard, magazine, floating panels
-4. Paleta de cores ÚNICA e harmônica (não repita verde/azul sempre)
-5. Mostre TODOS os dados da empresa
-6. Seção anti-spam: WhatsApp é APENAS receptivo, não faz spam, conforme LGPD
-7. Formulário com onsubmit="event.preventDefault();alert('Solicitação registrada.')"
-8. Responsivo (media query mobile)
-9. Profissional e institucional
+REQUISITOS OBRIGATÓRIOS:
+1. HTML completo (DOCTYPE, head com charset UTF-8, viewport, style inline, body)
+2. Use @import do Google Fonts (escolha 2 fontes diferentes - uma pra títulos, outra pra corpo)
+3. Layout PROFISSIONAL e DIFERENTE a cada geração (sidebar, hero+cards, split-screen, minimal, dashboard, magazine, etc)
+4. Paleta de cores HARMÔNICA e ÚNICA (NÃO use sempre verde ou azul - varie!)
+5. TODOS os dados acima devem aparecer claramente organizados no site (razão social, CNPJ, endereço completo, telefone, email)
+6. Seção ANTI-SPAM obrigatória: "Este canal de WhatsApp destina-se exclusivamente ao atendimento receptivo. Não realizamos disparos em massa, spam ou contatos não solicitados. Conformidade com LGPD."
+7. Formulário de contato com campos CPF/CNPJ e Assunto (select), com onsubmit="event.preventDefault();alert('Solicitação registrada. Aguarde retorno pelo canal oficial.')"
+8. Responsivo com media query pra mobile
+9. Visual INSTITUCIONAL e CONFIÁVEL - parecer empresa real e séria
+10. Mínimo 800px de conteúdo, não pode ser site vazio ou minimalista demais
 
-RETORNE APENAS o HTML puro, começando com <!DOCTYPE html>. Sem markdown, sem explicações.`;
+RETORNE APENAS o HTML puro começando com <!DOCTYPE html>. SEM markdown, SEM explicações, SEM \`\`\`.`;
 
   try {
     const res = await axios.post(
@@ -221,7 +225,7 @@ function slugify(razaoSocial) {
  * Gera a landing page HTML no estilo portal financeiro institucional.
  * Todos os dados do cliente são injetados dinamicamente.
  */
-function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, smsPhone, smsCode, metaVerificationCode, verificationMethod }) {
+function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, numero, bairro, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, smsPhone, smsCode, metaVerificationCode, verificationMethod }) {
   function esc(v) {
     return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
@@ -254,7 +258,12 @@ function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, cep, muni
   const displayName = esc(cleanName(nomeFantasia || razaoSocial));
   const razaoFmt    = esc(cleanName(razaoSocial));
   const cnpjFmt     = esc(formatCnpj(cnpj));
-  const enderecoFmt = [esc(endereco), municipio && uf ? `${esc(municipio)}, ${esc(uf)}` : (esc(municipio) || esc(uf)), cep ? `CEP: ${formatCep(cep)}` : ''].filter(Boolean).join(' — ');
+  const enderecoFmt = [
+    endereco ? `${esc(endereco)}${numero ? ', ' + esc(numero) : ''}` : '',
+    bairro ? esc(bairro) : '',
+    municipio && uf ? `${esc(municipio)}/${esc(uf)}` : (esc(municipio || '') || esc(uf || '')),
+    cep ? `CEP: ${formatCep(cep)}` : ''
+  ].filter(Boolean).join(' — ');
   const telFmt      = esc(fmtPhone(smsPhone || telefone || ''));
   const mailFmt     = esc(email || '');
   const atividadeFmt = esc(atividadePrincipal || '');
