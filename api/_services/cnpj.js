@@ -56,17 +56,17 @@ async function lookupViaCnpjsWs(cnpj) {
     endereco:             logradouro,
     numero:               estab.numero || '',
     complemento:          estab.complemento || '',
-    bairro:               estab.bairro || '',
+    bairro:               (estab.bairro || '').toUpperCase(),
     cep:                  (estab.cep || '').replace(/\D/g, ''),
-    municipio:            estab.cidade?.nome || '',
-    uf:                   estab.estado?.sigla || '',
-    situacao:             estab.situacao_cadastral || '',
+    municipio:            (estab.cidade?.nome || '').toUpperCase(),
+    uf:                   (estab.estado?.sigla || '').toUpperCase(),
+    situacao:             (estab.situacao_cadastral || '').toUpperCase(),
     atividadePrincipal:   cnaePrincipal,
     cnaesSecundarias:     cnaesSecundarias,
     naturezaJuridica:     natJuridica,
     porte:                porte,
     telefone:             telefone,
-    email:                estab.email || '',
+    email:                (estab.email || '').toUpperCase(),
     raw:                  d
   };
 }
