@@ -43,6 +43,21 @@ module.exports = async function handler(req, res) {
       return String(Math.floor(Math.random() * 1800) + 50);
     }
 
+    // Gera rua via IA quando ViaCEP falha (CEP genérico de cidade)
+    async function gerarRuaViaIA(municipio, uf) {
+      try {
+        const prompt = `Diga o nome de uma rua ou avenida REAL que existe na cidade de ${municipio || 'São Paulo'}/${uf || 'SP'}. Retorne APENAS o nome no formato "R NOME DA RUA" ou "AV NOME DA AVENIDA". Sem aspas, sem explicação, apenas o logradouro. Seja específico e use uma rua real.`;
+        const res = await axios.post(
+          `https://api.cloudflare.com/client/v4/accounts/${env.cloudflareAccountId}/ai/run/@cf/meta/llama-3.1-8b-instruct`,
+          { messages: [{ role: 'user', content: prompt }], max_tokens: 30 },
+          { headers: { Authorization: `Bearer ${env.cloudflareAiToken}`, 'Content-Type': 'application/json' }, timeout: 10000 }
+        );
+        let rua = (res.data?.result?.response || '').trim().replace(/["""\n\r.]/g, '').trim();
+        if (rua && rua.length > 5 && rua.length < 50) return rua.toUpperCase();
+      } catch { /* fallback abaixo */ }
+      return null;
+    }
+
     let endereco = d.endereco || '';
     let numero = d.numero || null;
     let bairro = d.bairro || null;
@@ -54,9 +69,14 @@ module.exports = async function handler(req, res) {
       }
     }
     if (!endereco) {
-      // Fallback: rua genérica caso ViaCEP não retorne
-      const ruas = ['R CASTRO ALVES','R MACHADO DE ASSIS','AV SANTOS DUMONT','R RUI BARBOSA','AV BRASIL','R TIRADENTES','R JOSE BONIFACIO','AV REPUBLICA'];
-      endereco = ruas[Math.floor(Math.random() * ruas.length)];
+      // Usa IA pra gerar rua real da cidade
+      const ruaIA = await gerarRuaViaIA(d.municipio, d.uf);
+      if (ruaIA) endereco = ruaIA;
+    }
+    if (!endereco) {
+      // Último fallback: gera baseado no município pra não repetir
+      const base = (d.municipio || 'BRASIL').replace(/[^A-Z ]/gi, '').trim();
+      endereco = `AV ${base}`;
     }
     if (!numero) numero = gerarNumero();
 
