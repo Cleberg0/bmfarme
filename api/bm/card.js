@@ -4,7 +4,7 @@ const { verifyAuth, setCors } = require('../_lib/auth');
 function buildCardHtml(d) {
   function esc(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function fmtCnpj(c) { const n=String(c||'').replace(/\D/g,''); return n.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')||c; }
-  function fmtCep(c)  { const n=String(c||'').replace(/\D/g,''); return n.length===8?n.replace(/^(\d{2})(\d{3})(\d{3})$/,'$1.$2-$3'):c; }
+  function fmtCep(c) { const n=String(c||'').replace(/\D/g,''); if(n.length===8) return n.replace(/^(\d{2})(\d{3})(\d{3})$/,'$1.$2-$3'); return c; }
   function fmtPhone(t){
     if(!t) return '';
     let n=String(t).replace(/\D/g,'');
@@ -15,7 +15,6 @@ function buildCardHtml(d) {
   }
 
   const now = new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
-
   const phoneForCard = fmtPhone(d.smsPhone || d.telefone || '');
   const razaoClean = esc(String(d.razaoSocial||'').replace(/^[\d.\s-]+/, '').replace(/[\d.\s-]+$/, '').trim());
 
@@ -25,278 +24,272 @@ function buildCardHtml(d) {
 <meta charset="UTF-8"/>
 <title>Comprovante CNPJ</title>
 <style>
-/* --- ESTILOS PARA A TELA E PARA O PAPEL --- */
-* { box-sizing: border-box; margin: 0; padding: 0; }
-.comprovante-cnpj {
-  width: 210mm;
-  min-height: 297mm;
-  margin: 0 auto;
-  padding: 12mm 15mm;
-  font-family: Arial, sans-serif;
-  color: #000;
-  background-color: #fff;
-}
-/* Sistema de Grid/Linhas */
-.comprovante-cnpj .row {
-  display: flex;
-  width: 100%;
-  margin-bottom: -1px;
-}
-.comprovante-cnpj .col {
-  border: 1px solid #000;
-  margin-right: -1px;
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-}
-.comprovante-cnpj .col:last-child {
-  margin-right: 0;
-}
-/* Larguras das Colunas em Porcentagem */
-.w-100 { width: 100%; }
-.w-70  { width: 70%; }
-.w-60  { width: 60%; }
-.w-50  { width: 50%; }
-.w-40  { width: 40%; }
-.w-35  { width: 35%; }
-.w-30  { width: 30%; }
-.w-20  { width: 20%; }
-.w-15  { width: 15%; }
-.w-10  { width: 10%; }
-/* Textos internos das caixas */
-.comprovante-cnpj label {
-  font-size: 7.5pt;
-  font-weight: bold;
-  text-transform: uppercase;
-  color: #333;
-  margin-bottom: 3px;
-}
-.comprovante-cnpj .valor {
-  font-size: 11pt;
-  font-family: 'Courier New', Courier, monospace;
-  min-height: 18px;
-  padding-top: 2px;
-}
-.comprovante-cnpj .destaque {
-  font-weight: bold;
-}
-/* Cabeçalho e Textos Específicos */
-.header-principal {
-  border: 1px solid #000;
-  padding: 14px 10px;
-  text-align: center;
-  margin-bottom: 10px !important;
-}
-.header-principal .col { border: none; }
-.centralizado { align-items: center; }
-.titulo-topo { font-size: 14pt; font-weight: bold; margin: 0; }
-.subtitulo-topo { font-size: 12pt; font-weight: bold; margin: 4px 0; }
-.nome-documento { font-size: 11pt; font-weight: bold; margin-top: 6px; color: #111; }
-.badge {
-  border: 1px solid #000;
-  padding: 2px 6px;
-  font-size: 9pt;
-  margin-left: 10px;
-}
-.rodape-normativa {
-  margin-top: 20px;
-  font-size: 9pt;
-  text-align: center;
-}
-/* Botões de ação (só na tela) */
-.actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin: 24px 0 10px;
-}
-.btn {
-  padding: 10px 28px;
-  border: none;
-  border-radius: 5px;
-  font-size: 12px;
-  font-weight: bold;
-  cursor: pointer;
-}
-.btn-green { background: #1a7f4b; color: #fff; }
-.btn-gray  { background: #d1d5db; color: #374151; }
-/* Body */
-body {
-  background: #c0c0c0;
-  padding: 20px;
-  margin: 0;
-}
-/* --- REGRAS EXCLUSIVAS DE IMPRESSÃO (A4) --- */
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 8mm 10mm;
-  }
-  body {
-    background: #fff;
-    padding: 0;
-    margin: 0;
-  }
-  .actions { display: none !important; }
-  .comprovante-cnpj {
-    width: 100%;
-    max-width: 100%;
-    min-height: auto;
-    padding: 5mm 8mm;
-    box-shadow: none;
-  }
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000;background:#c0c0c0;padding:20px;}
+.page{width:17cm;margin:0 auto;padding:15mm 0;background:#fff;}
+.main-table{width:17cm;border-collapse:collapse;line-height:9pt;margin:0 auto;}
+.content-box{border:.5pt solid windowtext;padding:5.65pt;}
+.header-table{width:100%;margin-bottom:12px;}
+.header-logo-cell{width:60px;height:60px;vertical-align:middle;text-align:left;}
+.logo{width:60px;height:60px;display:block;}
+.header-cell{text-align:center;font-weight:bold;}
+.header-title{margin-top:12px;margin-bottom:12px;font-size:medium;}
+.header-sub-title{margin-bottom:12px;font-size:medium;}
+.empty-col{vertical-align:middle;text-align:left;width:60px;height:60px;}
+.info-table{width:100%;border-collapse:collapse;line-height:normal;margin-bottom:12px;}
+.table-last{margin-bottom:0;}
+.info-row{vertical-align:top;}
+.section{border:.5pt solid windowtext;padding:0 0 3.5pt 3.5pt;}
+.section-centered{text-align:center;font-weight:bold;border:.5pt solid windowtext;padding:1.5px 0 3.5pt 3.5pt;vertical-align:middle;}
+.section-centered-title{font-size:10pt;font-weight:bold;}
+.section-no-border-vertical{border-left:.5pt solid windowtext;border-right:.5pt solid windowtext;border-top:none!important;padding:1.5px 0 3.5pt 3.5pt;}
+.section-title{font-size:6pt;}
+.section-data{font-size:8pt;font-weight:bold;}
+.min-height-20{min-height:19px;}
+.data-big{min-height:19.5px;}
+.texto-final{width:17cm;max-width:100%;line-height:normal;font-family:Arial,Helvetica,sans-serif;text-align:justify;font-size:small;margin-top:28px;}
+.actions{display:flex;gap:12px;justify-content:center;margin:24px 0 10px;}
+.btn{padding:10px 28px;border:none;border-radius:5px;font-size:12px;font-weight:bold;cursor:pointer;}
+.btn-green{background:#1a7f4b;color:#fff;}
+.btn-gray{background:#d1d5db;color:#374151;}
+@media print{
+  .actions{display:none!important;}
+  body{background:#fff;padding:0;}
+  .page{width:100%;padding:8mm 10mm;margin:0;}
 }
 </style>
 </head>
 <body>
+<div class="page">
+<table class="main-table">
+<tr><td class="content-box">
 
-<div class="comprovante-cnpj">
-  <!-- Cabeçalho -->
-  <div class="row header-principal">
-    <div class="col centralizado">
-      <p class="titulo-topo">REPÚBLICA FEDERATIVA DO BRASIL</p>
-      <p class="subtitulo-topo">CADASTRO NACIONAL DA PESSOA JURÍDICA</p>
-      <p class="nome-documento">COMPROVANTE DE INSCRIÇÃO E DE SITUAÇÃO CADASTRAL</p>
-    </div>
-  </div>
+<!-- HEADER -->
+<table class="header-table">
+<tr>
+  <td class="header-logo-cell" rowspan="5">
+    <img class="logo" src="https://bmfarme.vercel.app/brasao2.gif" alt="Brasão"/>
+  </td>
+  <td class="header-cell">
+    <div class="header-title">REPÚBLICA FEDERATIVA DO BRASIL</div>
+    <div class="header-sub-title">CADASTRO NACIONAL DA PESSOA JURÍDICA</div>
+  </td>
+  <td class="empty-col"></td>
+</tr>
+</table>
 
-  <!-- Nº Inscrição | Data Abertura -->
-  <div class="row">
-    <div class="col w-70">
-      <label>NÚMERO DE INSCRIÇÃO</label>
-      <div class="valor destaque">${esc(fmtCnpj(d.cnpj))} <span class="badge">MATRIZ</span></div>
-    </div>
-    <div class="col w-30">
-      <label>DATA DE ABERTURA</label>
-      <div class="valor destaque">${esc(d.dataAbertura||'')}</div>
-    </div>
-  </div>
+<!-- ROW 1: Nº Inscrição | Comprovante | Data Abertura -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="24%" class="section">
+    <span class="section-title">NÚMERO DE INSCRIÇÃO</span>
+    <div class="section-data">${esc(fmtCnpj(d.cnpj))}</div>
+    <div class="section-data">MATRIZ</div>
+  </td>
+  <td width="52%" class="section-centered">
+    <div class="section-centered-title">COMPROVANTE DE INSCRIÇÃO E DE SITUAÇÃO CADASTRAL</div>
+  </td>
+  <td width="24%" class="section">
+    <span class="section-title">DATA DE ABERTURA</span>
+    <div class="section-data">${esc(d.dataAbertura||'')}</div>
+  </td>
+</tr>
+</table>
 
-  <!-- Nome Empresarial -->
-  <div class="row">
-    <div class="col w-100">
-      <label>NOME EMPRESARIAL</label>
-      <div class="valor destaque">${razaoClean}</div>
-    </div>
-  </div>
+<!-- ROW 2: Nome Empresarial -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="100%" class="section">
+    <span class="section-title">NOME EMPRESARIAL</span>
+    <div class="section-data">${razaoClean}</div>
+  </td>
+</tr>
+</table>
 
-  <!-- Nome Fantasia | Porte -->
-  <div class="row">
-    <div class="col w-70">
-      <label>TÍTULO DO ESTABELECIMENTO (NOME DE FANTASIA)</label>
-      <div class="valor">${esc(d.nomeFantasia||'********')}</div>
-    </div>
-    <div class="col w-30">
-      <label>PORTE</label>
-      <div class="valor">${esc(d.porte||'')}</div>
-    </div>
-  </div>
+<!-- ROW 3: Nome Fantasia | Porte -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="88%" class="section">
+    <span class="section-title">TÍTULO DO ESTABELECIMENTO (NOME DE FANTASIA)</span>
+    <div class="section-data">${esc(d.nomeFantasia||'********')}</div>
+  </td>
+  <td width="2%" class="section-no-border-vertical"></td>
+  <td width="10%" class="section">
+    <span class="section-title">PORTE</span>
+    <div class="section-data">${esc(d.porte||'')}</div>
+  </td>
+</tr>
+</table>
 
-  <!-- Atividade Principal -->
-  <div class="row">
-    <div class="col w-100">
-      <label>CÓDIGO E DESCRIÇÃO DA ATIVIDADE ECONÔMICA PRINCIPAL</label>
-      <div class="valor">${esc(d.atividadePrincipal||'Não informada')}</div>
-    </div>
-  </div>
+<!-- ROW 4: Atividade Principal -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="100%" class="section">
+    <span class="section-title">CÓDIGO E DESCRIÇÃO DA ATIVIDADE ECONÔMICA PRINCIPAL</span>
+    <div class="section-data">${esc(d.atividadePrincipal||'Não informada')}</div>
+  </td>
+</tr>
+</table>
 
-  <!-- Atividades Secundárias -->
-  <div class="row">
-    <div class="col w-100">
-      <label>CÓDIGO E DESCRIÇÃO DAS ATIVIDADES ECONÔMICAS SECUNDÁRIAS</label>
-      <div class="valor">Não informada</div>
-    </div>
-  </div>
+<!-- ROW 5: Atividades Secundárias -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="100%" class="section">
+    <span class="section-title">CÓDIGO E DESCRIÇÃO DAS ATIVIDADES ECONÔMICAS SECUNDÁRIAS</span>
+    <div class="section-data">Não informada</div>
+  </td>
+</tr>
+</table>
 
-  <!-- Natureza Jurídica -->
-  <div class="row">
-    <div class="col w-100">
-      <label>CÓDIGO E DESCRIÇÃO DA NATUREZA JURÍDICA</label>
-      <div class="valor">${esc(d.naturezaJuridica||'')}</div>
-    </div>
-  </div>
+<!-- ROW 6: Natureza Jurídica -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="100%" class="section">
+    <span class="section-title">CÓDIGO E DESCRIÇÃO DA NATUREZA JURÍDICA</span>
+    <div class="section-data">${esc(d.naturezaJuridica||'')}</div>
+  </td>
+</tr>
+</table>
 
-  <!-- Logradouro | Número | Complemento -->
-  <div class="row">
-    <div class="col w-50">
-      <label>LOGRADOURO</label>
-      <div class="valor">${esc(d.endereco||'')}</div>
-    </div>
-    <div class="col w-15">
-      <label>NÚMERO</label>
-      <div class="valor">${esc(d.numero||'S/N')}</div>
-    </div>
-    <div class="col w-35">
-      <label>COMPLEMENTO</label>
-      <div class="valor">${esc(d.complemento||'********')}</div>
-    </div>
-  </div>
+<!-- ROW 7: Logradouro | Número | Complemento -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="50%" class="section">
+    <span class="section-title">LOGRADOURO</span>
+    <div class="section-data">${esc(d.endereco||'')}</div>
+  </td>
+  <td width="2%" class="section-no-border-vertical"></td>
+  <td width="10%" class="section">
+    <span class="section-title">NÚMERO</span>
+    <div class="section-data">${esc(d.numero||'S/N')}</div>
+  </td>
+  <td width="2%" class="section-no-border-vertical"></td>
+  <td width="36%" class="section">
+    <span class="section-title">COMPLEMENTO</span>
+    <div class="section-data">${esc(d.complemento||'********')}</div>
+  </td>
+</tr>
+</table>
 
-  <!-- CEP | Bairro | Município | UF -->
-  <div class="row">
-    <div class="col w-35">
-      <label>CEP</label>
-      <div class="valor">${esc(fmtCep(d.cep))}</div>
-    </div>
-    <div class="col w-35">
-      <label>BAIRRO/DISTRITO</label>
-      <div class="valor">${esc(d.bairro||'')}</div>
-    </div>
-    <div class="col w-20">
-      <label>MUNICÍPIO</label>
-      <div class="valor">${esc(d.municipio||'')}</div>
-    </div>
-    <div class="col w-10">
-      <label>UF</label>
-      <div class="valor">${esc(d.uf||'')}</div>
-    </div>
-  </div>
+<!-- ROW 8: CEP | Bairro | Município | UF -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="18%" class="section">
+    <span class="section-title">CEP</span>
+    <div class="section-data">${esc(fmtCep(d.cep))}</div>
+  </td>
+  <td width="2%" class="section-no-border-vertical"></td>
+  <td width="30%" class="section">
+    <span class="section-title">BAIRRO/DISTRITO</span>
+    <div class="section-data">${esc(d.bairro||'')}</div>
+  </td>
+  <td width="2%" class="section-no-border-vertical"></td>
+  <td width="38%" class="section">
+    <span class="section-title">MUNICÍPIO</span>
+    <div class="section-data">${esc(d.municipio||'')}</div>
+  </td>
+  <td width="2%" class="section-no-border-vertical"></td>
+  <td width="10%" class="section">
+    <span class="section-title">UF</span>
+    <div class="section-data">${esc(d.uf||'')}</div>
+  </td>
+</tr>
+</table>
 
-  <!-- Email | Telefone -->
-  <div class="row">
-    <div class="col w-60">
-      <label>ENDEREÇO ELETRÔNICO</label>
-      <div class="valor">${esc(d.email||'')}</div>
-    </div>
-    <div class="col w-40">
-      <label>TELEFONE</label>
-      <div class="valor">${esc(phoneForCard)}</div>
-    </div>
-  </div>
+<!-- ROW 9: Email | Telefone -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="50%" class="section">
+    <span class="section-title">ENDEREÇO ELETRÔNICO</span>
+    <div class="section-data">${esc(d.email||'')}</div>
+  </td>
+  <td width="2%" class="section-no-border-vertical"></td>
+  <td width="48%" class="section">
+    <span class="section-title">TELEFONE</span>
+    <div class="section-data">${esc(phoneForCard)}</div>
+  </td>
+</tr>
+</table>
 
-  <!-- Situação Cadastral | Data -->
-  <div class="row">
-    <div class="col w-60">
-      <label>SITUAÇÃO CADASTRAL</label>
-      <div class="valor destaque">${esc(d.situacao||'ATIVA')}</div>
-    </div>
-    <div class="col w-40">
-      <label>DATA DA SITUAÇÃO CADASTRAL</label>
-      <div class="valor">${esc(d.dataSituacao||'')}</div>
-    </div>
-  </div>
+<!-- ROW 10: EFR -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="100%" class="section">
+    <span class="section-title">ENTE FEDERATIVO RESPONSÁVEL (EFR)</span>
+    <div class="section-data">*****</div>
+  </td>
+</tr>
+</table>
 
-  <!-- Rodapé normativa -->
-  <div class="rodape-normativa">
-    <p>Aprovado pela Instrução Normativa RFB nº 2.119, de 06 de dezembro de 2022.</p>
-    <p>Emitido no dia ${now} (data e hora de Brasília).</p>
-  </div>
-</div>
+<!-- ROW 11: Situação Cadastral | Data -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="64%" class="section" style="padding-bottom:3pt">
+    <span class="section-title">SITUAÇÃO CADASTRAL</span>
+    <div class="section-data data-big">${esc(d.situacao||'ATIVA')}</div>
+  </td>
+  <td width="2%" class="section-no-border-vertical" style="padding-bottom:3pt"></td>
+  <td width="24%" class="section" style="padding-bottom:3pt">
+    <span class="section-title">DATA DA SITUAÇÃO CADASTRAL</span>
+    <div class="section-data">${esc(d.dataSituacao||'')}</div>
+  </td>
+</tr>
+</table>
 
-<!-- Botões (só aparecem na tela, ocultam na impressão) -->
+<!-- ROW 12: Motivo -->
+<table class="info-table">
+<tr class="info-row">
+  <td width="100%" class="section">
+    <span class="section-title">MOTIVO DE SITUAÇÃO CADASTRAL</span>
+    <div class="section-data">&nbsp;</div>
+  </td>
+</tr>
+</table>
+
+<!-- ROW 13: Situação Especial | Data -->
+<table class="info-table table-last">
+<tr class="info-row">
+  <td width="64%" class="section">
+    <span class="section-title">SITUAÇÃO ESPECIAL</span>
+    <div class="section-data">********</div>
+  </td>
+  <td width="2%" class="section-no-border-vertical"></td>
+  <td width="24%" class="section">
+    <span class="section-title">DATA DA SITUAÇÃO ESPECIAL</span>
+    <div class="section-data">********</div>
+  </td>
+</tr>
+</table>
+
+</td></tr>
+</table>
+
+<!-- Rodapé -->
+<p class="texto-final" style="margin-bottom:8px;margin-top:28px;">
+  <i>Aprovado pela Instrução Normativa RFB nº 2.119, de 06 de dezembro de 2022.</i>
+</p>
+<table border="0" cellspacing="0" class="texto-final">
+<tr>
+  <td align="left">
+    <p>Emitido no dia <b>${now.split(',')[0]?.trim() || now}</b> às <b>${now.split(',')[1]?.trim() || ''}</b> (data e hora de Brasília).</p>
+  </td>
+  <td align="right">
+    <p>Página: <b>1/1</b></p>
+  </td>
+</tr>
+</table>
+
+<!-- Botões (só na tela) -->
 <div class="actions">
   <button class="btn btn-green" onclick="window.print()">Imprimir / Salvar PDF</button>
   <button class="btn btn-gray" onclick="window.close()">Fechar</button>
 </div>
 
+</div><!-- /page -->
 </body>
 </html>`;
 }
+
 
 module.exports = async function handler(req, res) {
   setCors(res);
@@ -305,7 +298,6 @@ module.exports = async function handler(req, res) {
   const user = verifyAuth(req, res);
   if (!user) return;
 
-  // Helper para montar objeto de dados do cliente
   async function buildDataFromClient(clientId) {
     const [client, smsLog] = await Promise.all([
       prisma.client.findUnique({ where: { id: clientId } }),
@@ -316,11 +308,9 @@ module.exports = async function handler(req, res) {
     ]);
     if (!client) return null;
 
-    // Formata telefone: "5511953090612" → "(11) 95309-0612", "6185494555" → "(61) 8549-4555"
     function fmtPhone(tel) {
       if (!tel) return '';
       let d = String(tel).replace(/\D/g, '');
-      // Remove código do país 55 se presente
       if (d.length === 13 && d.startsWith('55')) d = d.slice(2);
       if (d.length === 12 && d.startsWith('55')) d = d.slice(2);
       if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
@@ -341,25 +331,23 @@ module.exports = async function handler(req, res) {
       endereco:           client.endereco            || '',
       numero:             client.numero              || '',
       complemento:        client.complemento         || '',
-      bairro:             client.bairro              || '',      cep:                client.cep                 || '',
+      bairro:             client.bairro              || '',
+      cep:                client.cep                 || '',
       municipio:          client.municipio           || '',
       uf:                 client.uf                  || '',
       email:              client.email               || '',
       telefone:           fmtPhone(client.telefone),
-      smsPhone:           smsLog?.phoneNumber        ? fmtPhone(smsLog.phoneNumber) : '',
+      smsPhone:           smsLog?.phoneNumber ? fmtPhone(smsLog.phoneNumber) : '',
     };
   }
 
-  // GET — dados JSON para o modal ou HTML direto
   if (req.method === 'GET') {
     try {
       const { clientId, format } = req.query;
       if (!clientId) return res.status(400).json({ error: 'clientId é obrigatório.' });
-
       const data = await buildDataFromClient(clientId);
       if (!data) return res.status(404).json({ error: 'Cliente não encontrado.' });
       if (format === 'json') return res.status(200).json(data);
-
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       return res.status(200).send(buildCardHtml(data));
     } catch (error) {
@@ -367,7 +355,6 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // POST — gera com dados editados pelo usuário
   if (req.method === 'POST') {
     try {
       const data = req.body;
