@@ -49,25 +49,94 @@ Retorne APENAS um JSON válido com exatamente estas 3 chaves (sem markdown, sem 
   };
 }
 
+// ─── Gerador de site COMPLETO via IA (layout único a cada chamada) ───────────
+
+async function generateFullSiteHtml(params) {
+  const { razaoSocial, nomeFantasia, cnpj, endereco, municipio, uf,
+          atividadePrincipal, telefone, email, smsPhone, smsCode,
+          metaVerificationCode, verificationMethod } = params;
+
+  function esc(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function cleanName(s) { return String(s||'').replace(/^[\d.\s-]+/,'').replace(/[\d.\s-]+$/,'').trim(); }
+  function fmtCnpj(c) { const n=String(c||'').replace(/\D/g,''); return n.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')||c; }
+  function fmtPhone(t) { if(!t) return ''; let n=String(t).replace(/\D/g,''); if(n.startsWith('55')&&n.length>=12) n=n.slice(2); if(n.length===10) return `(${n.slice(0,2)}) ${n.slice(2,6)}-${n.slice(6)}`; if(n.length===11) return `(${n.slice(0,2)}) ${n.slice(2,7)}-${n.slice(7)}`; return t; }
+
+  let verificationCode = metaVerificationCode || '';
+  const cMatch = verificationCode.match(/content=["']([^"']+)["']/);
+  if (cMatch) verificationCode = cMatch[1];
+  const metaTag = (verificationMethod !== 'html_file' && verificationCode)
+    ? `<meta name="facebook-domain-verification" content="${esc(verificationCode)}" />` : '';
+
+  const displayName = cleanName(nomeFantasia || razaoSocial);
+  const phone = fmtPhone(smsPhone || telefone || '');
+
+  const prompt = `Você é um web designer expert. Crie uma landing page HTML COMPLETA e ÚNICA para esta empresa.
+
+DADOS:
+- Nome: ${displayName}
+- Razão Social: ${cleanName(razaoSocial)}
+- CNPJ: ${fmtCnpj(cnpj)}
+- Atividade: ${atividadePrincipal || 'Serviços empresariais'}
+- Endereço: ${endereco || ''}, ${municipio || ''}-${uf || ''}
+- WhatsApp: ${phone || 'Não informado'}${smsCode ? ` (código: ${smsCode})` : ''}
+- Email: ${email || ''}
+
+REQUISITOS:
+1. HTML completo com DOCTYPE, head (charset, viewport, style inline), body
+2. Use @import do Google Fonts no style (escolha fontes diferentes a cada vez)
+3. Layout CRIATIVO - varie entre: sidebar, hero+cards, split-screen, minimal, dashboard, magazine, floating panels
+4. Paleta de cores ÚNICA e harmônica (não repita verde/azul sempre)
+5. Mostre TODOS os dados da empresa
+6. Seção anti-spam: WhatsApp é APENAS receptivo, não faz spam, conforme LGPD
+7. Formulário com onsubmit="event.preventDefault();alert('Solicitação registrada.')"
+8. Responsivo (media query mobile)
+9. Profissional e institucional
+
+RETORNE APENAS o HTML puro, começando com <!DOCTYPE html>. Sem markdown, sem explicações.`;
+
+  try {
+    const res = await axios.post(
+      `https://api.cloudflare.com/client/v4/accounts/${env.cloudflareAccountId}/ai/run/@cf/meta/llama-3.1-8b-instruct`,
+      { messages: [{ role: 'user', content: prompt }], max_tokens: 4000 },
+      { headers: { Authorization: `Bearer ${env.cloudflareAiToken}`, 'Content-Type': 'application/json' }, timeout: 30000 }
+    );
+
+    let html = res.data?.result?.response || '';
+    html = html.replace(/^```html?\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    if (!html.includes('<!DOCTYPE') && !html.includes('<html')) return null;
+    if (metaTag) html = html.replace(/<head>/i, `<head>\n${metaTag}`);
+    return html;
+  } catch (err) {
+    console.error('[generateFullSiteHtml] IA falhou:', err.message);
+    return null;
+  }
+}
+
 // ─── Templates de cores ──────────────────────────────────────────────────────
 
-const TEMPLATES = [
-  // 1 — Verde financeiro (original)
-  { name: 'verde', primary: '#059669', dark: '#047857', accent: '#ecfdf5', border: '#bbf7d0', text: '#111827' },
-  // 2 — Azul corporativo
-  { name: 'azul', primary: '#2563eb', dark: '#1d4ed8', accent: '#eff6ff', border: '#bfdbfe', text: '#1e3a5f' },
-  // 3 — Cinza executivo
-  { name: 'cinza', primary: '#374151', dark: '#1f2937', accent: '#f9fafb', border: '#d1d5db', text: '#111827' },
-  // 4 — Vinho/roxo institucional
-  { name: 'vinho', primary: '#7c3aed', dark: '#6d28d9', accent: '#f5f3ff', border: '#ddd6fe', text: '#1e1b4b' },
-  // 5 — Laranja/âmbar profissional
-  { name: 'laranja', primary: '#d97706', dark: '#b45309', accent: '#fffbeb', border: '#fde68a', text: '#1c1917' },
-];
+const LAYOUT_NAMES = ['verde', 'azul', 'cinza', 'vinho', 'laranja'];
+
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => { const k = (n + h / 30) % 12; const c = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1); return Math.round(255 * c).toString(16).padStart(2, '0'); };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
 
 function getTemplate(seed) {
-  // Usa aleatoriedade REAL — cada publicação gera um template diferente
-  const idx = Math.floor(Math.random() * TEMPLATES.length);
-  return TEMPLATES[idx];
+  // Gera paleta de cores 100% aleatória a cada chamada (nunca repete)
+  const h = Math.floor(Math.random() * 360);
+  const sat = 45 + Math.floor(Math.random() * 35);
+  const layout = LAYOUT_NAMES[Math.floor(Math.random() * LAYOUT_NAMES.length)];
+  return {
+    name: layout,
+    primary: hslToHex(h, sat, 38 + Math.floor(Math.random() * 12)),
+    dark: hslToHex(h, sat + 5, 25 + Math.floor(Math.random() * 10)),
+    accent: hslToHex(h, 25 + Math.floor(Math.random() * 15), 96 + Math.floor(Math.random() * 3)),
+    border: hslToHex(h, 25 + Math.floor(Math.random() * 15), 82 + Math.floor(Math.random() * 8)),
+    text: hslToHex(h, 15 + Math.floor(Math.random() * 10), 8 + Math.floor(Math.random() * 10)),
+  };
 }
 
 // ─── API Client ──────────────────────────────────────────────────────────────
@@ -128,19 +197,24 @@ async function deleteZone(zoneId) {
 
 /**
  * Gera o slug do subdomínio a partir da razão social.
- * Ex: "ROBERTA PORTO DE ANDRADE DE MARTINO" → "robertaporto"
+ * Adiciona sufixo aleatório de 3 chars pra garantir unicidade.
+ * Ex: "ROBERTA PORTO DE ANDRADE" → "robertaporto-x7k"
  */
 function slugify(razaoSocial) {
   const stopWords = new Set(['de', 'da', 'do', 'dos', 'das', 'e', 'em', 'a', 'o', 'para', 'com', 'ltda', 'eireli', 'me', 'sa', 'ss', 'epp']);
   const words = razaoSocial
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, '')
     .split(/\s+/)
     .filter(w => w && !stopWords.has(w));
 
-  // Pega as 2 primeiras palavras significativas, máx 20 chars total
-  return words.slice(0, 2).join('').slice(0, 20) || 'empresa';
+  const wordCount = 1 + Math.floor(Math.random() * Math.min(3, words.length || 1));
+  const base = words.slice(0, wordCount).join('').slice(0, 16) || 'empresa';
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let suffix = '';
+  for (let i = 0; i < 3; i++) suffix += chars[Math.floor(Math.random() * chars.length)];
+  return `${base}-${suffix}`;
 }
 
 /**
@@ -368,5 +442,5 @@ module.exports = {
   // workers
   deployWorker, deleteWorker, buildLandingHtml, slugify,
   // AI
-  generateAiContent,
+  generateAiContent, generateFullSiteHtml,
 };
