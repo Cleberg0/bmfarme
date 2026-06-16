@@ -62,6 +62,26 @@ const TEMPLATES = [
   { name: 'vinho', primary: '#7c3aed', dark: '#6d28d9', accent: '#f5f3ff', border: '#ddd6fe', text: '#1e1b4b' },
   // 5 — Laranja/âmbar profissional
   { name: 'laranja', primary: '#d97706', dark: '#b45309', accent: '#fffbeb', border: '#fde68a', text: '#1c1917' },
+  // 6 — Teal/ciano marítimo
+  { name: 'teal', primary: '#0d9488', dark: '#0f766e', accent: '#f0fdfa', border: '#99f6e4', text: '#134e4a' },
+  // 7 — Índigo profundo
+  { name: 'indigo', primary: '#4f46e5', dark: '#4338ca', accent: '#eef2ff', border: '#c7d2fe', text: '#1e1b4b' },
+  // 8 — Rosa/magenta moderno
+  { name: 'rosa', primary: '#db2777', dark: '#be185d', accent: '#fdf2f8', border: '#fbcfe8', text: '#1c1917' },
+  // 9 — Marrom/terra elegante
+  { name: 'terra', primary: '#92400e', dark: '#78350f', accent: '#fffbeb', border: '#fde68a', text: '#1c1917' },
+  // 10 — Azul petróleo
+  { name: 'petroleo', primary: '#155e75', dark: '#164e63', accent: '#ecfeff', border: '#a5f3fc', text: '#083344' },
+  // 11 — Esmeralda premium
+  { name: 'esmeralda', primary: '#065f46', dark: '#064e3b', accent: '#ecfdf5', border: '#6ee7b7', text: '#022c22' },
+  // 12 — Slate moderno
+  { name: 'slate', primary: '#475569', dark: '#334155', accent: '#f8fafc', border: '#cbd5e1', text: '#0f172a' },
+  // 13 — Vermelho institucional
+  { name: 'vermelho', primary: '#dc2626', dark: '#b91c1c', accent: '#fef2f2', border: '#fecaca', text: '#1c1917' },
+  // 14 — Safira azul-marinho
+  { name: 'safira', primary: '#1e40af', dark: '#1e3a8a', accent: '#eff6ff', border: '#93c5fd', text: '#172554' },
+  // 15 — Ouro/dourado clássico
+  { name: 'ouro', primary: '#a16207', dark: '#854d0e', accent: '#fefce8', border: '#fef08a', text: '#1c1917' },
 ];
 
 function getTemplate(seed) {
@@ -207,7 +227,17 @@ function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, cep, muni
 
   let html = '';
 
-  switch (tpl.name) {
+  // Novos templates reutilizam os layouts dos 5 originais (mesma estrutura, cores diferentes)
+  const layoutMap = {
+    verde: 'verde', teal: 'verde', esmeralda: 'verde',
+    azul: 'azul', indigo: 'azul', safira: 'azul', petroleo: 'azul',
+    cinza: 'cinza', slate: 'cinza', terra: 'cinza',
+    vinho: 'vinho', rosa: 'vinho', vermelho: 'vinho',
+    laranja: 'laranja', ouro: 'laranja',
+  };
+  const layout = layoutMap[tpl.name] || 'laranja';
+
+  switch (layout) {
 
     // ═══════════════════════════════════════════════════════════════════════════
     // VERDE — Assessoria de Cobrança / Recuperação de Crédito

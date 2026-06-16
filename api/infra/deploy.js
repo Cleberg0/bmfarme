@@ -1,10 +1,13 @@
 const prisma = require('../_lib/prisma');
 const { verifyAuth, setCors } = require('../_lib/auth');
 const { deployWorker, deleteWorker, buildLandingHtml, generateAiContent } = require('../_services/cloudflare');
+const { rateLimit } = require('../_lib/rateLimit');
+const { audit } = require('../_lib/audit');
 
 module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!rateLimit(req, res, { max: 15 })) return;
 
   const user = verifyAuth(req, res);
   if (!user) return;
