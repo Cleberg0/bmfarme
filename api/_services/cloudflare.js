@@ -72,31 +72,50 @@ async function generateFullSiteHtml(params) {
 
   const enderecoParts = [endereco, numero ? `nº ${numero}` : '', bairro, municipio && uf ? `${municipio}/${uf}` : municipio || uf || ''].filter(Boolean).join(', ');
 
-  const prompt = `Você é um web designer sênior. Crie uma landing page HTML COMPLETA, PROFISSIONAL e ÚNICA para esta empresa real.
+  const prompt = `Crie um site HTML completo, profissional e ÚNICO para esta empresa. A META (Facebook) vai analisar este site para aprovar a verificação do WhatsApp Business. O site precisa passar na verificação imediatamente.
 
-DADOS DA EMPRESA (OBRIGATÓRIO mostrar TODOS no site):
-- Nome Fantasia: ${displayName}
+DADOS DA EMPRESA:
+- Nome: ${displayName}
 - Razão Social: ${cleanName(razaoSocial)}
 - CNPJ: ${fmtCnpj(cnpj)}
-- Atividade: ${atividadePrincipal || 'Serviços empresariais'}
-- Endereço COMPLETO: ${enderecoParts}
-- CEP: ${cep || ''}
-- WhatsApp Oficial: ${phone || 'Não informado'}${smsCode ? ` (código verificação: ${smsCode})` : ''}
-- Email: ${email || ''}
+- Endereço: ${enderecoParts}${cep ? `, CEP: ${cep}` : ''}
+- Email: ${email || 'contato@empresa.com.br'}
 
-REQUISITOS OBRIGATÓRIOS:
-1. HTML completo (DOCTYPE, head com charset UTF-8, viewport, style inline, body)
-2. Use @import do Google Fonts (escolha 2 fontes diferentes - uma pra títulos, outra pra corpo)
-3. Layout PROFISSIONAL e DIFERENTE a cada geração (sidebar, hero+cards, split-screen, minimal, dashboard, magazine, etc)
-4. Paleta de cores HARMÔNICA e ÚNICA (NÃO use sempre verde ou azul - varie!)
-5. TODOS os dados acima devem aparecer claramente organizados no site (razão social, CNPJ, endereço completo, telefone, email)
-6. Seção ANTI-SPAM obrigatória: "Este canal de WhatsApp destina-se exclusivamente ao atendimento receptivo. Não realizamos disparos em massa, spam ou contatos não solicitados. Conformidade com LGPD."
-7. Formulário de contato com campos CPF/CNPJ e Assunto (select), com onsubmit="event.preventDefault();alert('Solicitação registrada. Aguarde retorno pelo canal oficial.')"
-8. Responsivo com media query pra mobile
-9. Visual INSTITUCIONAL e CONFIÁVEL - parecer empresa real e séria
-10. Mínimo 800px de conteúdo, não pode ser site vazio ou minimalista demais
+ESTRUTURA OBRIGATÓRIA DO SITE (todas as seções abaixo DEVEM existir):
 
-RETORNE APENAS o HTML puro começando com <!DOCTYPE html>. SEM markdown, SEM explicações, SEM \`\`\`.`;
+1. HEADER/NAVEGAÇÃO - com nome da empresa e menu (Home, Quem Somos, Atendimento, Privacidade, Termos, Contato)
+
+2. HOME - Título: "Atendimento informativo e sob demanda". Texto: "Somos uma empresa que atua exclusivamente no atendimento de pessoas que entram em contato conosco de forma voluntária para esclarecer dúvidas, solicitar informações ou dar continuidade a atendimentos previamente iniciados. Não realizamos contatos não solicitados."
+
+3. QUEM SOMOS - Texto: "A ${displayName} atua de forma ética e transparente, oferecendo atendimento informativo e suporte personalizado apenas para pessoas que demonstram interesse prévio em nossos serviços. Toda comunicação é iniciada pelo próprio usuário, por meio de nossos canais oficiais."
+
+4. COMO FUNCIONA O ATENDIMENTO - Lista:
+• O primeiro contato é sempre iniciado pelo próprio usuário.
+• Respondemos apenas mensagens recebidas em nossos canais oficiais.
+• Não utilizamos listas compradas, bases de terceiros ou contatos aleatórios.
+• O usuário pode solicitar a interrupção do atendimento a qualquer momento.
+• Todas as mensagens seguem as políticas do WhatsApp Business e da Meta.
+
+5. POLÍTICA DE PRIVACIDADE - Texto: "Utilizamos os dados fornecidos exclusivamente para responder solicitações feitas de forma voluntária pelo usuário. Não compartilhamos informações com terceiros. Não realizamos envios automáticos sem consentimento."
+
+6. TERMOS DE USO - Texto: "Ao entrar em contato conosco, o usuário declara que iniciou a comunicação de forma espontânea e concorda em receber respostas relacionadas à sua solicitação. Não realizamos comunicações promocionais não solicitadas."
+
+7. CONTATO - Email institucional + formulário simples (nome, email, mensagem) com onsubmit="event.preventDefault();alert('Mensagem enviada com sucesso.')"
+
+8. RODAPÉ - Deve conter: CNPJ (${fmtCnpj(cnpj)}), nome da empresa (${cleanName(razaoSocial)}), links para Termos de Serviço e Política de Privacidade, endereço completo.
+
+REGRAS DE DESIGN:
+- HTML completo com DOCTYPE, head (charset UTF-8, viewport), style inline
+- Use @import do Google Fonts (2 fontes diferentes)
+- Paleta de cores ÚNICA e harmônica (varie a cada geração, NÃO use sempre verde/azul)
+- Layout DIFERENTE a cada geração (varie estrutura, cores, fontes)
+- Responsivo (media query mobile)
+- NÃO mostrar WhatsApp com CTA agressivo
+- NÃO mostrar código de atividades econômicas secundárias
+- Visual limpo, institucional, confiável
+- Mínimo 1000px de conteúdo
+
+RETORNE APENAS o HTML puro começando com <!DOCTYPE html>. SEM markdown, SEM explicações, SEM backticks.`;
 
   try {
     const res = await axios.post(
