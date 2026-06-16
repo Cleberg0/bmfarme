@@ -237,23 +237,60 @@ function slugify(razaoSocial) {
 }
 
 /**
- * Gera a landing page HTML no estilo portal financeiro institucional.
- * Todos os dados do cliente são injetados dinamicamente.
- * 10 layouts estruturalmente diferentes, selecionados aleatoriamente.
+ * Gera landing page com estrutura aprovada pela Meta.
+ * Cores e fontes aleatórias a cada chamada — nunca repete o mesmo visual.
+ * Estrutura: Home, Quem Somos, Atendimento, Privacidade, Termos, Contato, Rodapé.
  */
 function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, numero, bairro, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, smsPhone, smsCode, metaVerificationCode, verificationMethod }) {
-  function esc(v) {
-    return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-  function formatCnpj(c) {
-    const d = String(c || '').replace(/\D/g, '');
-    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') || c;
-  }
-  function formatCep(c) {
-    const d = String(c || '').replace(/\D/g, '');
-    return d.replace(/^(\d{5})(\d{3})$/, '$1-$2') || c;
-  }
-  function cleanName(s) { return String(s || '').replace(/^[\d.\s-]+/, '').replace(/[\d.\s-]+$/, '').trim(); }
+  function esc(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function fmtCnpj(c) { const d=String(c||'').replace(/\D/g,''); return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')||c; }
+  function fmtCep(c) { const d=String(c||'').replace(/\D/g,''); return d.replace(/^(\d{5})(\d{3})$/,'$1-$2')||c; }
+  function cleanName(s) { return String(s||'').replace(/^[\d.\s-]+/,'').replace(/[\d.\s-]+$/,'').trim(); }
+
+  let verificationCode = metaVerificationCode || '';
+  const cm = verificationCode.match(/content=["']([^"']+)["']/);
+  if (cm) verificationCode = cm[1];
+  const metaTag = (verificationMethod !== 'html_file' && verificationCode) ? `<meta name="facebook-domain-verification" content="${esc(verificationCode)}" />` : '';
+
+  const tpl = getTemplate();
+  const displayName = esc(cleanName(nomeFantasia || razaoSocial));
+  const razaoFmt = esc(cleanName(razaoSocial));
+  const cnpjFmt = esc(fmtCnpj(cnpj));
+  const endFull = [endereco, numero].filter(Boolean).join(', ');
+  const endCity = [bairro, municipio && uf ? `${municipio}/${uf}` : (municipio || uf || ''), cep ? `CEP ${fmtCep(cep)}` : ''].filter(Boolean).join(' — ');
+  const emailFmt = esc(email || 'contato@empresa.com.br');
+
+  // Fontes aleatórias
+  const fontPairs = [
+    ['Poppins:wght@400;500;600;700','Lora:wght@400;500;700'],
+    ['Inter:wght@300;400;500;600','Playfair+Display:wght@500;700'],
+    ['Nunito:wght@300;400;600;700','Crimson+Pro:wght@400;600'],
+    ['Work+Sans:wght@300;400;500;600','Libre+Baskerville:wght@400;700'],
+    ['Manrope:wght@300;400;500;600;700','Spectral:wght@400;500;700'],
+    ['DM+Sans:wght@300;400;500;700','Cormorant+Garamond:wght@500;600;700'],
+    ['Outfit:wght@300;400;500;600;700','Fraunces:wght@400;500;700'],
+    ['Source+Sans+3:wght@300;400;500;600','Merriweather:wght@400;700'],
+    ['Rubik:wght@300;400;500;600','Sora:wght@400;500;600;700'],
+    ['Karla:wght@300;400;500;700','IBM+Plex+Serif:wght@400;500;600'],
+  ];
+  const fp = fontPairs[Math.floor(Math.random() * fontPairs.length)];
+  const bodyFont = fp[0].split(':')[0].replace(/\+/g,' ');
+  const headFont = fp[1].split(':')[0].replace(/\+/g,' ');
+  const fontImport = `@import url('https://fonts.googleapis.com/css2?family=${fp[0]}&family=${fp[1]}&display=swap');`;
+
+  // Gradiente aleatório
+  const angles = [120,135,145,150,160,170,180,200,210,225];
+  const angle = angles[Math.floor(Math.random() * angles.length)];
+
+  // Border-radius aleatório
+  const radii = ['6px','8px','10px','12px','14px','16px'];
+  const rad = radii[Math.floor(Math.random() * radii.length)];
+
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">${metaTag}<title>${displayName} — Portal Institucional</title><style>${fontImport}*{margin:0;padding:0;box-sizing:border-box}body{font-family:'${bodyFont}',sans-serif;color:${tpl.text};background:#fff;line-height:1.6}h1,h2,h3{font-family:'${headFont}',serif}.nav{background:${tpl.dark};padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}.nav .brand{color:#fff;font-weight:700;font-size:1.1rem}.nav ul{display:flex;gap:20px;list-style:none}.nav ul a{color:rgba(255,255,255,.85);text-decoration:none;font-size:.82rem;font-weight:500;transition:color .2s}.nav ul a:hover{color:#fff}.hero{background:linear-gradient(${angle}deg,${tpl.primary},${tpl.dark});color:#fff;padding:72px 24px;text-align:center}.hero h1{font-size:2rem;margin-bottom:12px}.hero p{max-width:600px;margin:0 auto;font-size:1rem;opacity:.9;line-height:1.7}section{max-width:760px;margin:0 auto;padding:56px 24px}section h2{font-size:1.5rem;color:${tpl.dark};margin-bottom:18px;padding-bottom:10px;border-bottom:3px solid ${tpl.primary}}section p,section li{font-size:.92rem;color:#444;line-height:1.7;margin-bottom:12px}section ul{padding-left:20px;margin-bottom:16px}section ul li{margin-bottom:8px}.alt-bg{background:${tpl.accent}}.form-section{background:${tpl.accent};border:1px solid ${tpl.border};border-radius:${rad};padding:28px;margin-top:20px}.form-section h3{font-size:1rem;color:${tpl.dark};margin-bottom:14px}form .row{display:flex;gap:12px;margin-bottom:12px}form input,form textarea{flex:1;padding:12px;border:1px solid ${tpl.border};border-radius:${rad};font-size:.88rem;font-family:inherit}form textarea{min-height:80px;resize:vertical}form input:focus,form textarea:focus{outline:none;border-color:${tpl.primary}}form .btn{width:100%;padding:14px;background:${tpl.primary};color:#fff;border:none;border-radius:${rad};font-weight:600;font-size:.9rem;cursor:pointer}form .btn:hover{background:${tpl.dark}}footer{background:${tpl.dark};color:rgba(255,255,255,.85);padding:36px 24px;text-align:center;font-size:.8rem;line-height:1.8}footer a{color:rgba(255,255,255,.7);text-decoration:underline}footer .cnpj{font-weight:600;margin-top:8px}@media(max-width:640px){.nav ul{display:none}.hero h1{font-size:1.5rem}section{padding:36px 16px}form .row{flex-direction:column}}</style></head><body><nav class="nav"><div class="brand">${displayName}</div><ul><li><a href="#home">Home</a></li><li><a href="#quem-somos">Quem Somos</a></li><li><a href="#atendimento">Atendimento</a></li><li><a href="#privacidade">Privacidade</a></li><li><a href="#termos">Termos</a></li><li><a href="#contato">Contato</a></li></ul></nav><div class="hero" id="home"><h1>Atendimento informativo e sob demanda</h1><p>Somos uma empresa que atua exclusivamente no atendimento de pessoas que entram em contato conosco de forma voluntária para esclarecer dúvidas, solicitar informações ou dar continuidade a atendimentos previamente iniciados. Não realizamos contatos não solicitados.</p></div><section id="quem-somos"><h2>Quem Somos</h2><p>A ${displayName} atua de forma ética e transparente, oferecendo atendimento informativo e suporte personalizado apenas para pessoas que demonstram interesse prévio em nossos serviços.</p><p>Toda comunicação é iniciada pelo próprio usuário, por meio de nossos canais oficiais.</p></section><section class="alt-bg" id="atendimento"><h2>Como Funciona o Atendimento</h2><ul><li>O primeiro contato é sempre iniciado pelo próprio usuário.</li><li>Respondemos apenas mensagens recebidas em nossos canais oficiais.</li><li>Não utilizamos listas compradas, bases de terceiros ou contatos aleatórios.</li><li>O usuário pode solicitar a interrupção do atendimento a qualquer momento.</li><li>Todas as mensagens seguem as políticas do WhatsApp Business e da Meta.</li></ul></section><section id="privacidade"><h2>Política de Privacidade</h2><p>Utilizamos os dados fornecidos exclusivamente para responder solicitações feitas de forma voluntária pelo usuário.</p><p>Não compartilhamos informações com terceiros.</p><p>Não realizamos envios automáticos sem consentimento.</p></section><section class="alt-bg" id="termos"><h2>Termos de Uso</h2><p>Ao entrar em contato conosco, o usuário declara que iniciou a comunicação de forma espontânea e concorda em receber respostas relacionadas à sua solicitação.</p><p>Não realizamos comunicações promocionais não solicitadas.</p></section><section id="contato"><h2>Contato</h2><p>Email institucional: <strong>${emailFmt}</strong></p><div class="form-section"><h3>Formulário de Contato</h3><form onsubmit="event.preventDefault();alert('Mensagem enviada com sucesso.')"><div class="row"><input type="text" placeholder="Seu nome" required></div><div class="row"><input type="email" placeholder="Seu email" required></div><textarea placeholder="Sua mensagem" required></textarea><br><button type="submit" class="btn">Enviar Mensagem</button></form></div></section><footer><p><strong>${displayName}</strong></p><p>${esc(endFull)}${endCity ? ' — ' + esc(endCity) : ''}</p><p><a href="#privacidade">Política de Privacidade</a> &nbsp;|&nbsp; <a href="#termos">Termos de Uso</a></p><div class="cnpj">${razaoFmt} — CNPJ: ${cnpjFmt}</div></footer></body></html>`;
+}
+
+/**
+ * Publica (ou atualiza) um Cloudflare Worker com o HTML da landing page.
   function fmtPhone(t) {
     if (!t) return '';
     let n = String(t).replace(/\D/g, '');
