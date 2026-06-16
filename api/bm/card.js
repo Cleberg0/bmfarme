@@ -9,6 +9,10 @@ function buildCardHtml(d) {
 
   const now = new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
+  // Formato do telefone para o cartão: +55XXXXXXXXXXX (como aparece no Meta)
+  const rawPhone = String(d.smsPhone || d.telefone || '').replace(/\D/g, '');
+  const phoneForCard = rawPhone ? '+55' + rawPhone.replace(/^55/, '') : '';
+
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -216,7 +220,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#000;background
     </div>
     <div class="cell bl">
       <span class="fl">Telefone</span>
-      <div class="fv">${esc(fmtPhone(d.smsPhone || d.telefone || ''))}</div>
+      <div class="fv">${esc(phoneForCard)}</div>
     </div>
   </div>
 
