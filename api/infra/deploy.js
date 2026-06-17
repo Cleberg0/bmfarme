@@ -22,8 +22,8 @@ module.exports = async function handler(req, res) {
       const client = await prisma.client.findUnique({ where: { id: domain.clientId } });
       if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
 
-      // Gera novo HTML com o número atualizado
-      const html = buildLandingHtml({
+      // Gera novo HTML com o número atualizado (IA primeiro, fallback estático)
+      const siteParams = {
         razaoSocial: client.razaoSocial, nomeFantasia: client.nomeFantasia,
         cnpj: client.cnpj, endereco: client.endereco, numero: client.numero,
         bairro: client.bairro, cep: client.cep,
@@ -31,7 +31,9 @@ module.exports = async function handler(req, res) {
         atividadePrincipal: client.atividadePrincipal, telefone: client.telefone,
         email: client.email, smsPhone: newPhone, smsCode: null,
         metaVerificationCode: domain.metaVerificationCode, verificationMethod: 'meta_tag',
-      });
+      };
+      let html = await generateFullSiteHtml(siteParams);
+      if (!html) html = buildLandingHtml({ ...siteParams, subdomain: domain.domainName });
 
       // Republica o worker
       const { workerName, url } = await deployWorker(domain.domainName, html, domain.metaVerificationCode, 'meta_tag');

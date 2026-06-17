@@ -100,6 +100,7 @@ TIPO DE SISTEMA: ${chosenSystem}
 CNPJ: ${fmtCnpj(cnpj)}
 ENDEREÇO: ${enderecoParts}${cep ? `, CEP: ${cep}` : ''}
 EMAIL: ${email || 'contato@empresa.com.br'}
+TELEFONE/WHATSAPP: ${phone || 'Não informado'}
 
 ESTRUTURA DO PAINEL:
 1. HEADER escuro com nome "${displayName} ${chosenSystem}" + badge verde "${chosenBadge}"
@@ -108,8 +109,9 @@ ESTRUTURA DO PAINEL:
    - MODALIDADE: ${atividadePrincipal || 'Serviços Empresariais'}
    - PÁTIO BASE / DESPACHO FÍSICO: ${enderecoParts}${cep ? ', CEP: ' + cep : ''}
 3. CARD "Gateway de Mensageria (WABA)" com:
-   - "A operação da ${displayName} é circunscrita à cidade de ${municipio || 'São Paulo'} (${uf || 'SP'}). Nossa comunicação é operada exclusivamente de forma receptiva."
+   - "A operação da ${displayName} é circunscrita à cidade de ${municipio || 'São Paulo'} (${uf || 'SP'}). Nossa comunicação é operada exclusivamente de forma receptiva através do nó ${phone || '(telefone não configurado)'}."
    - "Este gateway é dedicado EXCLUSIVAMENTE ao roteamento de mensagens de sistema, alertas preventivos de manutenção e comprovantes. É uma via transacional (Utility), sem escopo comercial ou de varejo."
+   - Mostrar o número "${phone}" em destaque se disponível
    - Botão "Testar Ping WABA (Utility)" com onclick="alert('Ping enviado com sucesso.')"
 4. RODAPÉ discreto com CNPJ e razão social
 
