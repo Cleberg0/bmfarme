@@ -119,6 +119,27 @@ REGRAS: HTML completo com DOCTYPE. CSS inline no <style>. @import Google Fonts (
 RETORNE APENAS HTML puro. SEM markdown. SEM backticks. SEM explicações. Começa com <!DOCTYPE html>.`;
 
   try {
+    // Tenta Gemini primeiro (melhor qualidade e variação)
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      try {
+        const geminiRes = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+          { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.95, maxOutputTokens: 8192 } },
+          { headers: { 'Content-Type': 'application/json' }, timeout: 60000 }
+        );
+        let html = geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        html = html.replace(/^```html?\s*/i, '').replace(/```\s*$/i, '').trim();
+        if (html.includes('<!DOCTYPE') || html.includes('<html')) {
+          if (metaTag) html = html.replace(/<head>/i, `<head>\n${metaTag}`);
+          return html;
+        }
+      } catch (gemErr) {
+        console.error('[generateFullSiteHtml] Gemini falhou, tentando Cloudflare:', gemErr.message);
+      }
+    }
+
+    // Fallback: Cloudflare Llama
     const res = await axios.post(
       `https://api.cloudflare.com/client/v4/accounts/${env.cloudflareAccountId}/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast`,
       { messages: [{ role: 'user', content: prompt }], max_tokens: 4096, temperature: 0.9 },
@@ -132,7 +153,7 @@ RETORNE APENAS HTML puro. SEM markdown. SEM backticks. SEM explicações. Começ
     if (metaTag) html = html.replace(/<head>/i, `<head>\n${metaTag}`);
     return html;
   } catch (err) {
-    console.error('[generateFullSiteHtml] IA falhou:', err.message);
+    console.error('[generateFullSiteHtml] Todas as IAs falharam:', err.message);
     return null;
   }
 }
