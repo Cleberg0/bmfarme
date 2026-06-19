@@ -85,7 +85,7 @@ async function lookupViaCnpjsWs(cnpj) {
     naturezaJuridica:     natJuridica,
     porte:                porte,
     telefone:             telefone,
-    email:                semAcento(estab.email),
+    email:                (estab.email || '').toLowerCase(),
     raw:                  d
   };
 }
