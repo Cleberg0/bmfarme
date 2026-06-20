@@ -98,40 +98,44 @@ async function generateFullSiteHtml(params) {
   ];
   const chosenPalette = palettes[Math.floor(Math.random() * palettes.length)];
 
-  const prompt = `[SEED:${seed}] Crie um site HTML estilo PAINEL TÉCNICO INDUSTRIAL / SISTEMA CORPORATIVO.
-Deve parecer um SOFTWARE REAL, NÃO um site institucional genérico. VARIE o layout a cada geração.
+  const prompt = `[SEED:${seed}] Crie um site HTML COMPLETO no estilo PAINEL TÉCNICO / DASHBOARD INDUSTRIAL.
+Use EXATAMENTE estas cores: ${chosenPalette}
 
-PALETA DE CORES OBRIGATÓRIA (use exatamente estas): ${chosenPalette}
+O site deve ter:
+- Background ESCURO com pattern grid sutil
+- Container principal com borda lateral colorida (6px solid cor destaque)
+- Google Fonts: Rajdhani (títulos bold), Share Tech Mono (dados monospace), Inter (corpo)
+- border-radius: 2px a 4px máximo (estilo industrial)
 
-ESTILO VISUAL:
-- Background ESCURO (#0f172a, #1a1a2e, #0d1117 ou similar)
-- Cards com bordas sutis e fundo levemente mais claro
-- Badge "${chosenBadge}" com bolinha verde no header
-- Tipografia técnica (monospace pra dados, sans-serif pro resto)
-- Visual de DASHBOARD/SISTEMA, não de site marketing
+DADOS OBRIGATÓRIOS QUE DEVEM APARECER COM LABELS CLAROS:
+- Razão Social: ${cleanName(razaoSocial)}
+- CNPJ: ${fmtCnpj(cnpj)} (em fonte monospace, cor destaque)
+- Endereço Completo: ${enderecoParts}${cep ? ', CEP: ' + cep : ''}
+- Telefone/WhatsApp: ${phone || 'N/A'} (em monospace, cor destaque, BEM VISÍVEL)
+- Email: ${email || 'N/A'}
+- Atividade (CNAE): ${atividadePrincipal || 'Serviços Empresariais'}
 
-EMPRESA: ${displayName}
-TIPO DE SISTEMA: ${chosenSystem}
-CNPJ: ${fmtCnpj(cnpj)}
-ENDEREÇO: ${enderecoParts}${cep ? `, CEP: ${cep}` : ''}
-EMAIL: ${email || 'contato@empresa.com.br'}
-TELEFONE/WHATSAPP: ${phone || 'Não informado'}
+ESTRUTURA:
+1. HEADER: Nome "${displayName}" em Rajdhani bold + subtítulo "${chosenSystem}" + badge "[${chosenBadge}]"
+2. GRID DE CARDS (fundo escuro, borda esquerda colorida 3px):
+   - Card "Razão Social" com valor
+   - Card "CNPJ" em monospace cor destaque
+   - Card "Telefone/WhatsApp" em monospace cor destaque
+   - Card "Email"
+   - Card full-width "Endereço / Base Operacional" com endereço completo
+   - Card full-width "CNAE — Atividade Principal"
+3. BLOCO WABA/COMPLIANCE (borda esquerda 4px, fundo mais escuro):
+   - Título "Gateway WABA — Canal Utility Receptivo"
+   - Texto: operação exclusivamente receptiva, sem disparos em massa, sem marketing B2C, conformidade LGPD
+   - Número ${phone} em DESTAQUE grande (monospace, cor destaque, font-size 1.3rem+)
+4. BLOCO PRIVACIDADE + TERMOS:
+   - "Política de Privacidade: dados usados exclusivamente para responder solicitações voluntárias. Não compartilhamos com terceiros. LGPD."
+   - "Termos de Uso: comunicação espontânea, sem promoções não solicitadas."
+5. FOOTER: Botão com borda "Testar Ping WABA" + texto "CNPJ ${fmtCnpj(cnpj)} — ${cleanName(razaoSocial)}"
 
-ESTRUTURA DO PAINEL:
-1. HEADER escuro com nome "${displayName} ${chosenSystem}" + badge verde "${chosenBadge}"
-2. CARD "Matriz de Operações" com:
-   - LICENÇA / CNPJ: ${fmtCnpj(cnpj)} - ${cleanName(razaoSocial)}
-   - MODALIDADE: ${atividadePrincipal || 'Serviços Empresariais'}
-   - PÁTIO BASE / DESPACHO FÍSICO: ${enderecoParts}${cep ? ', CEP: ' + cep : ''}
-3. CARD "Gateway de Mensageria (WABA)" com:
-   - "A operação da ${displayName} é circunscrita à cidade de ${municipio || 'São Paulo'} (${uf || 'SP'}). Nossa comunicação é operada exclusivamente de forma receptiva através do nó ${phone || '(telefone não configurado)'}."
-   - "Este gateway é dedicado EXCLUSIVAMENTE ao roteamento de mensagens de sistema, alertas preventivos de manutenção e comprovantes. É uma via transacional (Utility), sem escopo comercial ou de varejo."
-   - Mostrar o número "${phone}" em destaque se disponível
-   - Botão "Testar Ping WABA (Utility)" com onclick="alert('Ping enviado com sucesso.')"
-4. RODAPÉ discreto com CNPJ e razão social
+IMPORTANTE: Cada label deve ser CLARO (ex: "Razão Social:", "CNPJ:", "Endereço:"). Os dados devem ser FACILMENTE IDENTIFICÁVEIS por um revisor humano.
 
-REGRAS: HTML completo com DOCTYPE. CSS inline no <style>. @import Google Fonts (JetBrains Mono + Inter). Responsivo. Mínimo 600px de conteúdo. NÃO parecer site institucional genérico.
-RETORNE APENAS HTML puro. SEM markdown. SEM backticks. SEM explicações. Começa com <!DOCTYPE html>.`;
+Responsivo (media query mobile). HTML completo DOCTYPE. RETORNE APENAS HTML puro. SEM markdown, SEM backticks, SEM explicação.`;
 
   try {
     // Tenta Gemini primeiro (melhor qualidade e variação)

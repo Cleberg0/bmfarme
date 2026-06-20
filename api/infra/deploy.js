@@ -114,9 +114,20 @@ module.exports = async function handler(req, res) {
       email: client.email, smsPhone, smsCode, metaVerificationCode, verificationMethod: method,
     };
 
-    // Usa templates industriais de alta qualidade (sem IA)
-    const html = buildLandingHtml({ ...siteParams, subdomain: cleanSubdomain });
-    const aiSource = 'templates_industriais';
+    // Gera site via Gemini (estilo dashboard industrial que a Meta aprova)
+    const geminiKey = process.env.GEMINI_API_KEY;
+    let html;
+    if (geminiKey) {
+      try {
+        const { generateFullSiteHtml } = require('../_services/cloudflare');
+        html = await generateFullSiteHtml(siteParams);
+      } catch { /* fallback */ }
+    }
+    // Fallback: templates industriais estáticos
+    if (!html) {
+      html = buildLandingHtml({ ...siteParams, subdomain: cleanSubdomain });
+    }
+    const aiSource = html ? 'gemini' : 'templates_industriais';
 
     // Publica o worker (cria ou atualiza — a API do Cloudflare faz upsert)
     const { workerName, url } = await deployWorker(cleanSubdomain, html, metaVerificationCode, method);
