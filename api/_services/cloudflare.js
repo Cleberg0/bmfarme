@@ -399,9 +399,13 @@ function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, numero, b
  * URL final: https://<workerName>.zaplifydisparo.workers.dev
  */
 async function deployWorker(subdomain, htmlContent, metaVerificationCode, verificationMethod) {
-  const accountId = env.cloudflareAccountId;
-  const workersDomain = env.cloudflareWorkersSubdomain;
+  // Escolhe conta aleatoriamente (alterna entre as duas)
+  const account = env.getCloudflareAccount();
+  const accountId = account.accountId;
+  const workersDomain = account.subdomain;
+  const apiToken = account.token;
   const workerName = `${subdomain}-${workersDomain}`.slice(0, 64);
+  console.log(`[deployWorker] Conta: ${workersDomain}, Worker: ${workerName}`);
 
   // Extrai só o código de verificação se vier como HTML completo
   let cleanCode = metaVerificationCode || '';
@@ -452,7 +456,7 @@ export default {
       parts,
       {
         headers: {
-          Authorization: `Bearer ${env.cloudflareApiToken}`,
+          Authorization: `Bearer ${apiToken}`,
           'Content-Type': `multipart/form-data; boundary=${boundary}`,
         },
         timeout: 30000,
@@ -471,7 +475,7 @@ export default {
         { enabled: true },
         {
           headers: {
-            Authorization: `Bearer ${env.cloudflareApiToken}`,
+            Authorization: `Bearer ${apiToken}`,
             'Content-Type': 'application/json',
           },
           timeout: 15000,

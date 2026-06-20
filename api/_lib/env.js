@@ -5,6 +5,23 @@ function get(name) {
   return value;
 }
 
+// Multi-conta Cloudflare: alterna entre conta 1 e 2 aleatoriamente
+function getCloudflareAccount() {
+  const hasAccount2 = process.env.CLOUDFLARE_API_TOKEN_2 && process.env.CLOUDFLARE_ACCOUNT_ID_2 && process.env.CLOUDFLARE_WORKERS_SUBDOMAIN_2;
+  if (hasAccount2 && Math.random() > 0.5) {
+    return {
+      token: process.env.CLOUDFLARE_API_TOKEN_2,
+      accountId: process.env.CLOUDFLARE_ACCOUNT_ID_2,
+      subdomain: process.env.CLOUDFLARE_WORKERS_SUBDOMAIN_2,
+    };
+  }
+  return {
+    token: get('CLOUDFLARE_API_TOKEN'),
+    accountId: get('CLOUDFLARE_ACCOUNT_ID'),
+    subdomain: get('CLOUDFLARE_WORKERS_SUBDOMAIN'),
+  };
+}
+
 module.exports = {
   get jwtSecret()                  { return get('JWT_SECRET'); },
   get cloudflareApiToken()         { return get('CLOUDFLARE_API_TOKEN'); },
@@ -17,4 +34,6 @@ module.exports = {
   get vpsIp()        { return process.env.VPS_IP || ''; },
   get dataApiKey()   { return process.env.DATA_API_KEY || ''; },
   get tempMailKey()  { return process.env.TEMP_MAIL_API_KEY || ''; },
+  // Multi-conta
+  getCloudflareAccount,
 };
