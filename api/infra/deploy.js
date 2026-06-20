@@ -2,6 +2,15 @@ const prisma = require('../_lib/prisma');
 const { verifyAuth, setCors } = require('../_lib/auth');
 const { deployWorker, deleteWorker, buildLandingHtml, generateAiContent, generateFullSiteHtml } = require('../_services/cloudflare');
 
+// Formata telefone pra exibição (41) 96347-5267
+function formatPhoneForReplace(phone) {
+  let n = String(phone || '').replace(/\D/g, '');
+  if (n.startsWith('55') && n.length >= 12) n = n.slice(2);
+  if (n.length === 10) return `(${n.slice(0,2)}) ${n.slice(2,6)}-${n.slice(6)}`;
+  if (n.length === 11) return `(${n.slice(0,2)}) ${n.slice(2,7)}-${n.slice(7)}`;
+  return phone;
+}
+
 module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -22,22 +31,40 @@ module.exports = async function handler(req, res) {
       const client = await prisma.client.findUnique({ where: { id: domain.clientId } });
       if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
 
-      // Gera novo HTML com o número atualizado (IA primeiro, fallback estático)
-      const siteParams = {
-        razaoSocial: client.razaoSocial, nomeFantasia: client.nomeFantasia,
-        cnpj: client.cnpj, endereco: client.endereco, numero: client.numero,
-        bairro: client.bairro, cep: client.cep,
-        municipio: client.municipio, uf: client.uf, situacao: client.situacao,
-        atividadePrincipal: client.atividadePrincipal, telefone: client.telefone,
-        email: client.email, smsPhone: newPhone, smsCode: null,
-        metaVerificationCode: domain.metaVerificationCode, verificationMethod: 'meta_tag',
-      };
-      const html = buildLandingHtml({ ...siteParams, subdomain: domain.domainName });
-
-      // Detecta em qual conta o worker está pelo nome salvo
+      // Detecta em qual conta o worker está
       const existingWorker = domain.cloudflareZoneId || '';
       const sub2 = process.env.CLOUDFLARE_WORKERS_SUBDOMAIN_2 || '';
       const targetSub = (sub2 && existingWorker.endsWith(`-${sub2}`)) ? sub2 : (process.env.CLOUDFLARE_WORKERS_SUBDOMAIN || 'verificadametta');
+      const workerUrl = `https://${existingWorker}.${targetSub}.workers.dev`;
+
+      // Busca o HTML atual do site pra preservar o layout
+      let html;
+      try {
+        const axios = require('axios');
+        const resp = await axios.get(workerUrl, { timeout: 10000 });
+        html = resp.data;
+      } catch { html = null; }
+
+      if (html && typeof html === 'string') {
+        // Substitui o número antigo pelo novo no HTML existente (preserva layout)
+        const fmtNew = formatPhoneForReplace(newPhone);
+        // Remove qualquer telefone formatado e coloca o novo
+        html = html.replace(/\(\d{2}\)\s*\d{4,5}-\d{4}/g, fmtNew);
+        // Também substitui números em formato raw (5511999999999)
+        html = html.replace(/\b55\d{10,11}\b/g, newPhone.replace(/\D/g, ''));
+      } else {
+        // Fallback: regenera (perde layout, mas pelo menos funciona)
+        const siteParams = {
+          razaoSocial: client.razaoSocial, nomeFantasia: client.nomeFantasia,
+          cnpj: client.cnpj, endereco: client.endereco, numero: client.numero,
+          bairro: client.bairro, cep: client.cep,
+          municipio: client.municipio, uf: client.uf, situacao: client.situacao,
+          atividadePrincipal: client.atividadePrincipal, telefone: client.telefone,
+          email: client.email, smsPhone: newPhone, smsCode: null,
+          metaVerificationCode: domain.metaVerificationCode, verificationMethod: 'meta_tag',
+        };
+        html = buildLandingHtml({ ...siteParams, subdomain: domain.domainName });
+      }
 
       // Republica o worker na mesma conta
       const { workerName, url } = await deployWorker(domain.domainName, html, domain.metaVerificationCode, 'meta_tag', targetSub);
