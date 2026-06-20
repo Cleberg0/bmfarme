@@ -43,6 +43,53 @@ module.exports = async function handler(req, res) {
     }
   }
 
+  // ── PUT — trocar layout do site (regenerar com template diferente) ────────
+  if (req.method === 'PUT') {
+    try {
+      const { domainId } = req.body;
+      if (!domainId)
+        return res.status(400).json({ error: 'domainId é obrigatório.' });
+
+      const domain = await prisma.domain.findUnique({ where: { id: domainId } });
+      if (!domain) return res.status(404).json({ error: 'Domínio não encontrado.' });
+
+      const client = await prisma.client.findUnique({ where: { id: domain.clientId } });
+      if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
+
+      // Busca o SMS mais recente desse cliente
+      const smsLog = await prisma.smsLog.findFirst({
+        where: { clientId: client.id, status: { in: ['WAITING', 'RECEIVED'] } },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const siteParams = {
+        razaoSocial: client.razaoSocial, nomeFantasia: client.nomeFantasia,
+        cnpj: client.cnpj, endereco: client.endereco, numero: client.numero,
+        bairro: client.bairro, cep: client.cep,
+        municipio: client.municipio, uf: client.uf, situacao: client.situacao,
+        atividadePrincipal: client.atividadePrincipal, telefone: client.telefone,
+        email: client.email, smsPhone: smsLog?.phoneNumber || null, smsCode: smsLog?.smsCode || null,
+        metaVerificationCode: domain.metaVerificationCode, verificationMethod: 'meta_tag',
+      };
+
+      // Tenta IA primeiro, fallback pra template estático com índice forçado diferente
+      let html;
+      try {
+        html = await generateFullSiteHtml(siteParams);
+      } catch { /* fallback */ }
+      if (!html) {
+        // Força um template diferente usando random
+        html = buildLandingHtml({ ...siteParams, subdomain: domain.domainName });
+      }
+
+      const { workerName, url } = await deployWorker(domain.domainName, html, domain.metaVerificationCode, 'meta_tag');
+
+      return res.status(200).json({ success: true, workerUrl: url, workerName, message: 'Layout alterado com sucesso!' });
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ error: error.message });
+    }
+  }
+
   // ── GET — lista todos os domínios publicados ──────────────────────────
   if (req.method === 'GET') {
     try {
@@ -114,9 +161,15 @@ module.exports = async function handler(req, res) {
       email: client.email, smsPhone, smsCode, metaVerificationCode, verificationMethod: method,
     };
 
-    // Gera HTML usando templates industriais variados (16 layouts, sem IA, sem custo)
-    let html = buildLandingHtml({ ...siteParams, subdomain: cleanSubdomain });
-    const aiSource = 'templates_industriais';
+    // Gera HTML via IA (Gemini) com fallback pro template estático (16 layouts)
+    let html;
+    try {
+      html = await generateFullSiteHtml(siteParams);
+    } catch { /* fallback */ }
+    if (!html) {
+      html = buildLandingHtml({ ...siteParams, subdomain: cleanSubdomain });
+    }
+    const aiSource = html.includes('Gemini') ? 'gemini' : 'templates_industriais';
 
     // Publica o worker (cria ou atualiza — a API do Cloudflare faz upsert)
     const { workerName, url } = await deployWorker(cleanSubdomain, html, metaVerificationCode, method);

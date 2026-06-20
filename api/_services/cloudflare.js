@@ -52,8 +52,84 @@ Retorne APENAS um JSON válido com exatamente estas 3 chaves (sem markdown, sem 
 // ─── Gerador de site COMPLETO via IA (layout único a cada chamada) ───────────
 
 async function generateFullSiteHtml(params) {
-  // Agora usa APENAS os 16 templates estáticos (variação garantida, sem IA, sem custo)
-  // A IA foi removida porque sempre gerava o mesmo layout
+  // Tenta Gemini pra gerar HTML único. Se falhar, usa templates estáticos.
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    try {
+      const { razaoSocial, nomeFantasia, cnpj, endereco, numero, bairro, cep, municipio, uf,
+              atividadePrincipal, telefone, email, smsPhone, metaVerificationCode, verificationMethod } = params;
+
+      function esc(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+      function cleanName(s) { return String(s||'').replace(/^[\d.\s-]+/,'').replace(/[\d.\s-]+$/,'').trim(); }
+      function fmtCnpj(c) { const n=String(c||'').replace(/\D/g,''); return n.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')||c; }
+      function fmtPhone(t) { if(!t) return ''; let n=String(t).replace(/\D/g,''); if(n.startsWith('55')&&n.length>=12) n=n.slice(2); if(n.length===10) return `(${n.slice(0,2)}) ${n.slice(2,6)}-${n.slice(6)}`; if(n.length===11) return `(${n.slice(0,2)}) ${n.slice(2,7)}-${n.slice(7)}`; return t; }
+
+      let verificationCode = metaVerificationCode || '';
+      const cMatch = verificationCode.match(/content=["']([^"']+)["']/);
+      if (cMatch) verificationCode = cMatch[1];
+      const metaTag = (verificationMethod !== 'html_file' && verificationCode)
+        ? `<meta name="facebook-domain-verification" content="${esc(verificationCode)}" />` : '';
+
+      const displayName = cleanName(nomeFantasia || razaoSocial);
+      const phone = fmtPhone(smsPhone || telefone || '');
+      const enderecoParts = [endereco, numero ? `nº ${numero}` : '', bairro, municipio && uf ? `${municipio}/${uf}` : municipio || uf || ''].filter(Boolean).join(', ');
+      const seed = Math.floor(Math.random() * 99999);
+
+      // Escolhe estilo visual aleatório pra cada geração
+      const styles = [
+        'estilo PAINEL INDUSTRIAL com grid 3 colunas, badges monospace, paleta escura com destaque laranja/azul',
+        'estilo TERMINAL CLI com fundo preto puro, texto verde (#0f0), dados como output de comandos ($ query --cnpj)',
+        'estilo SPLIT-SCREEN com lado esquerdo escuro (dados empresa) e lado direito com gradiente (compliance WABA)',
+        'estilo KANBAN BOARD com 3 colunas: Identidade | Operação | Compliance, cards dentro de cada coluna',
+        'estilo SIDEBAR com menu lateral fixo (nome/badge) e área principal com seções empilhadas, paleta roxo/teal',
+        'estilo HERO CENTRALIZADO com nome gigante no topo (gradient text), dados em lista abaixo, card único max-width 650px',
+        'estilo TABELA CORPORATIVA com <table> zebrada, header fixo colorido, linhas alternadas, paleta azul escuro/dourado',
+        'estilo METRICS DASHBOARD com números grandes KPI no topo, barras CSS decorativas, dados compactos abaixo',
+        'estilo MAGAZINE EDITORIAL com tipografia grande, letter-spacing, blocos assimétricos, drop-cap no primeiro parágrafo',
+        'estilo CARD-GRID MOSAIC com cards de tamanhos variados (span 1 ou 2 colunas), efeito glassmorphism sutil',
+        'estilo DARK NEON com fundo #0a0a0a, bordas com glow neon (box-shadow colorido), texto branco, destaque ciano',
+        'estilo BLUEPRINT com fundo azul escuro, linhas pontilhadas formando grid, fonte técnica, ícones de engenharia',
+      ];
+      const chosenStyle = styles[Math.floor(Math.random() * styles.length)];
+
+      const prompt = `[SEED:${seed}] Gere um site HTML COMPLETO e ÚNICO com ${chosenStyle}.
+
+DADOS DA EMPRESA (inclua TODOS com labels visíveis):
+- Nome: ${displayName}
+- Razão Social: ${cleanName(razaoSocial)}
+- CNPJ: ${fmtCnpj(cnpj)}
+- Endereço: ${enderecoParts}${cep ? ', CEP ' + cep : ''}
+- Telefone/WhatsApp: ${phone || 'N/A'}
+- Email: ${email || 'N/A'}
+- CNAE: ${atividadePrincipal || 'Serviços'}
+
+OBRIGATÓRIO incluir:
+1. Todos os dados acima com labels claros
+2. Seção WABA: "Operação exclusivamente receptiva. Canal Utility. Sem disparos em massa. Sem marketing B2C. Conformidade LGPD."
+3. Telefone ${phone} em destaque grande (monospace, 1.3rem+)
+4. Privacidade: "Dados exclusivos para solicitações voluntárias. Não compartilhamos com terceiros. LGPD Lei 13.709/2018."
+5. Termos: "Comunicação espontânea. Sem promoções não solicitadas. Diretrizes WhatsApp Business e Meta."
+
+REGRAS: Background escuro. Google Fonts (escolha 2-3). Responsivo. border-radius baixo (2-4px). HTML completo DOCTYPE.
+RETORNE APENAS HTML puro sem markdown nem backticks.`;
+
+      const geminiRes = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+        { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 1.2, maxOutputTokens: 8192 } },
+        { headers: { 'Content-Type': 'application/json' }, timeout: 45000 }
+      );
+      let html = geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      html = html.replace(/^```html?\s*/i, '').replace(/```\s*$/i, '').trim();
+      if (html.includes('<!DOCTYPE') || html.includes('<html')) {
+        if (metaTag) html = html.replace(/<head>/i, `<head>\n${metaTag}`);
+        console.log('[generateFullSiteHtml] Gemini OK, estilo:', chosenStyle.slice(0, 40));
+        return html;
+      }
+    } catch (err) {
+      console.error('[generateFullSiteHtml] Gemini falhou:', err.message);
+    }
+  }
+  // Fallback: templates estáticos
   return buildLandingHtml(params);
 }
 
@@ -163,7 +239,7 @@ function slugify(razaoSocial) {
  * Google Fonts: Rajdhani (headings), Share Tech Mono (data), Inter (body).
  * Seleção aleatória a cada chamada.
  */
-function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, numero, bairro, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, smsPhone, smsCode, metaVerificationCode, verificationMethod }) {
+function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, numero, bairro, cep, municipio, uf, situacao, atividadePrincipal, telefone, email, smsPhone, smsCode, metaVerificationCode, verificationMethod, forceTemplateIndex }) {
   function esc(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function fmtCnpj(c) { const d=String(c||'').replace(/\D/g,''); return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')||c; }
   function fmtCep(c) { const d=String(c||'').replace(/\D/g,''); return d.length===8 ? `${d.slice(0,2)}.${d.slice(2,5)}-${d.slice(5)}` : c; }
@@ -192,9 +268,9 @@ function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, numero, b
   // Bloco de Política de Privacidade + Termos (obrigatório pra Meta aprovar)
   const privacyTermsBlock = `<div style="margin-top:20px;padding:18px 20px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:3px"><h4 style="font-family:'Rajdhani',sans-serif;font-size:.82rem;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:.8px">&#x1f4c4; Política de Privacidade</h4><p style="font-size:.75rem;color:#64748b;line-height:1.6;margin-bottom:6px">A ${displayName} utiliza os dados fornecidos exclusivamente para responder solicitações feitas de forma voluntária pelo usuário. Não compartilhamos informações pessoais com terceiros. Não realizamos envios automáticos sem consentimento prévio. Os dados são armazenados com segurança e podem ser excluídos mediante solicitação do titular, conforme previsto na Lei Geral de Proteção de Dados (LGPD — Lei 13.709/2018).</p><h4 style="font-family:'Rajdhani',sans-serif;font-size:.82rem;color:#94a3b8;margin:14px 0 10px;text-transform:uppercase;letter-spacing:.8px">&#x1f4d1; Termos de Uso</h4><p style="font-size:.75rem;color:#64748b;line-height:1.6">Ao entrar em contato conosco, o usuário declara que iniciou a comunicação de forma espontânea e concorda em receber respostas relacionadas exclusivamente à sua solicitação. A ${displayName} não realiza comunicações promocionais não solicitadas, disparos em massa ou telemarketing ativo. Todo atendimento segue as diretrizes do WhatsApp Business e da Meta Platforms.</p></div>`;
 
-  // Seleção de template: usa Math.random() puro — cada chamada = template diferente garantido
-  const templateIndex = Math.floor(Math.random() * 16);
-  console.log(`[buildLandingHtml] CNPJ=${cnpj} templateIndex=${templateIndex}`);
+  // Seleção de template: usa forceTemplateIndex se fornecido, senão random
+  const templateIndex = (typeof forceTemplateIndex === 'number') ? (forceTemplateIndex % 16) : Math.floor(Math.random() * 16);
+  console.log(`[buildLandingHtml] CNPJ=${cnpj} templateIndex=${templateIndex} forced=${typeof forceTemplateIndex === 'number'}`);
   let html = '';
 
   // ═══════════════════════════════════════════════════════════════════════════

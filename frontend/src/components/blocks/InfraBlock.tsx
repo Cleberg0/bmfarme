@@ -204,6 +204,33 @@ export default function InfraBlock({ clientId, razaoSocial, smsPhone, onDomainRe
             ✏️ Alterar e republicar
           </button>
         )}
+        {deployed && (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={async () => {
+              if (!deployed.domainId) return;
+              setLoading(true);
+              setError('');
+              try {
+                const { data } = await api.put('/infra/deploy', { domainId: deployed.domainId });
+                setDeployed(prev => prev ? { ...prev, workerUrl: data.workerUrl || prev.workerUrl } : prev);
+                alert('✅ Layout alterado! Abra o site pra conferir.');
+              } catch (err) {
+                setError(
+                  axios.isAxiosError(err)
+                    ? err.response?.data?.error || err.message
+                    : 'Erro ao trocar layout.'
+                );
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="rounded-xl border border-purple-500/50 bg-purple-500/10 px-4 py-3 text-sm font-semibold text-purple-300 transition hover:bg-purple-500/20 disabled:opacity-50"
+          >
+            🎲 Trocar Layout
+          </button>
+        )}
       </div>
 
       {error && (
