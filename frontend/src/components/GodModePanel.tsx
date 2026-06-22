@@ -13,6 +13,7 @@ import WabaBlock from './blocks/WabaBlock';
 
 type ClientData = {
   razaoSocial: string;
+  nomeFantasia?: string;
   endereco: string;
   cep: string;
 };
@@ -249,6 +250,7 @@ export default function GodModePanel() {
             <InfraBlock
               clientId={clientId}
               razaoSocial={clientData?.razaoSocial}
+              nomeFantasia={clientData?.nomeFantasia}
               smsPhone={smsPhone}
               onDomainReady={(id, url) => {
                 setDomainId(id);

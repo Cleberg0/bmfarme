@@ -23,7 +23,7 @@ type ClientPayload = {
 };
 
 type CnpjBlockProps = {
-  onClientReady: (clientId: string, data: { razaoSocial: string; endereco: string; cep: string }) => void;
+  onClientReady: (clientId: string, data: { razaoSocial: string; nomeFantasia?: string; endereco: string; cep: string }) => void;
   workerUrl?: string | null;
 };
 
@@ -44,6 +44,47 @@ function toTitleCase(str: string): string {
 // Remove números/pontos do início E do final da razão social (ex: "65.682.194 THAIS..." ou "RAPHAEL SILVA 33152044895")
 function cleanRazao(str: string): string {
   return str.replace(/^[\d.\s-]+/, '').replace(/[\d.\s-]+$/, '').trim();
+}
+
+function FieldCopyEditable({ label, value, onEdit }: { label: string; value?: string; onEdit: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value || '');
+  if (!value && !editing) return null;
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-3">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-500">{label}</p>
+      {editing ? (
+        <div className="flex items-center gap-2">
+          <input
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            className="flex-1 rounded-lg border border-amber-500/50 bg-slate-900 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-amber-400"
+            autoFocus
+          />
+          <button
+            onClick={() => { onEdit(editValue); setEditing(false); }}
+            className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/30"
+          >✓</button>
+          <button
+            onClick={() => { setEditValue(value || ''); setEditing(false); }}
+            className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-600"
+          >✕</button>
+        </div>
+      ) : (
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-medium text-slate-100 break-words flex-1">{editValue || value}</p>
+          <div className="flex gap-1 shrink-0">
+            <button
+              onClick={() => setEditing(true)}
+              className="rounded-lg border border-slate-600 bg-slate-700 px-2 py-1 text-xs text-amber-300 hover:bg-slate-600"
+              title="Editar nome"
+            >✏️</button>
+            <CopyButton value={editValue || value || ''} label={label} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function FieldCopy({ label, value }: { label: string; value?: string }) {
@@ -87,6 +128,7 @@ export default function CnpjBlock({ onClientReady, workerUrl }: CnpjBlockProps) 
       setClient(data);
       onClientReady(data.id, {
         razaoSocial: data.razaoSocial,
+        nomeFantasia: data.nomeFantasia,
         endereco: data.endereco,
         cep: data.cep,
       });
@@ -168,8 +210,14 @@ export default function CnpjBlock({ onClientReady, workerUrl }: CnpjBlockProps) 
 
           {/* Campos copiáveis — dados originais em MAIÚSCULO como vem da Receita */}
           <div className="grid gap-3 sm:grid-cols-2">
-            <FieldCopy label="Razão Social" value={cleanRazao(client.razaoSocial)} />
-            {client.nomeFantasia && <FieldCopy label="Nome Fantasia" value={cleanRazao(client.nomeFantasia)} />}
+            <FieldCopyEditable label="Razão Social" value={cleanRazao(client.razaoSocial)} onEdit={(v) => {
+              setClient(c => c ? { ...c, razaoSocial: v } : c);
+              onClientReady(client.id, { razaoSocial: v, nomeFantasia: client.nomeFantasia, endereco: client.endereco, cep: client.cep });
+            }} />
+            {client.nomeFantasia && <FieldCopyEditable label="Nome Fantasia" value={cleanRazao(client.nomeFantasia)} onEdit={(v) => {
+              setClient(c => c ? { ...c, nomeFantasia: v } : c);
+              onClientReady(client.id, { razaoSocial: client.razaoSocial, nomeFantasia: v, endereco: client.endereco, cep: client.cep });
+            }} />}
             <FieldCopy label="CNPJ (EIN)" value={client.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')} />
             {client.situacao && <FieldCopy label="Situação" value={client.situacao} />}
           </div>
