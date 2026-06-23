@@ -18,6 +18,7 @@ export default function SmsBlock({ clientId, onSmsReady, onPhoneGenerated }: Sms
   const [provider, setProvider] = useState<'SMS24H' | 'HEROSMS'>('SMS24H');
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [generatedPhone, setGeneratedPhone] = useState<string | null>(null);
   const lastDeliveredCodeRef = useRef<string | null>(null);
 
   const SMS_TIMEOUT = 1200; // 20 minutos pra ambos providers
@@ -63,6 +64,7 @@ export default function SmsBlock({ clientId, onSmsReady, onPhoneGenerated }: Sms
       const { data } = await api.post('/sms/generate', { clientId, provider });
       const nextLogId: string = data.id ?? data.smsLog?.id;
       setLogId(nextLogId);
+      setGeneratedPhone(data.phoneNumber || null);
       setStartTime(Date.now());
     } catch (err) {
       setError(
@@ -75,7 +77,7 @@ export default function SmsBlock({ clientId, onSmsReady, onPhoneGenerated }: Sms
     }
   };
 
-  const displayPhone = phoneNumber ?? null;
+  const displayPhone = phoneNumber ?? generatedPhone;
 
   return (
     <div className="space-y-5">
