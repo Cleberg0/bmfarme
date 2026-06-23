@@ -39,7 +39,8 @@ function makeRequest(provider, params) {
   }).then(res => typeof res.data === 'string' ? res.data.trim() : String(res.data).trim());
 }
 
-async function buyNumber(service = DEFAULT_SERVICE, country = DEFAULT_COUNTRY, preferredProvider) {
+async function buyNumber(service = DEFAULT_SERVICE, country, preferredProvider) {
+  const effectiveCountry = country || DEFAULT_COUNTRY;
   let providers = getProviders();
   
   // Se o usuario escolheu um provider específico, coloca ele primeiro
@@ -54,7 +55,10 @@ async function buyNumber(service = DEFAULT_SERVICE, country = DEFAULT_COUNTRY, p
 
   for (const provider of providers) {
     try {
-      const raw = await makeRequest(provider, { action: 'getNumber', service, country });
+      // HeroSMS usa padrão SMS-Activate: Brasil = 12, fb = fb
+      // SMS24h usa: Brasil = 73, fb = fb
+      const countryCode = (provider.name === 'HEROSMS') ? 12 : effectiveCountry;
+      const raw = await makeRequest(provider, { action: 'getNumber', service, country: countryCode });
 
       if (raw.startsWith('ACCESS_NUMBER:')) {
         const parts = raw.split(':');
