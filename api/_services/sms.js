@@ -55,10 +55,8 @@ async function buyNumber(service = DEFAULT_SERVICE, country, preferredProvider) 
 
   for (const provider of providers) {
     try {
-      // HeroSMS usa padrão SMS-Activate: Brasil = 12, fb = fb
-      // SMS24h usa: Brasil = 73, fb = fb
-      // HeroSMS: maxPrice pra pegar o mais barato disponível
-      const countryCode = (provider.name === 'HEROSMS') ? 12 : effectiveCountry;
+      // HeroSMS e SMS24h usam o mesmo country code: Brasil = 73
+      const countryCode = effectiveCountry;
       const extraParams = (provider.name === 'HEROSMS') ? { maxPrice: '0.15' } : {};
       const raw = await makeRequest(provider, { action: 'getNumber', service, country: countryCode, ...extraParams });
 
