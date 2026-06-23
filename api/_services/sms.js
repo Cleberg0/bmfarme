@@ -43,11 +43,11 @@ async function buyNumber(service = DEFAULT_SERVICE, country, preferredProvider) 
   const effectiveCountry = country || DEFAULT_COUNTRY;
   let providers = getProviders();
   
-  // Se o usuario escolheu um provider específico, coloca ele primeiro
+  // Se o usuario escolheu um provider específico, usa SÓ ele (sem fallback)
   if (preferredProvider) {
     const preferred = providers.find(p => p.name === preferredProvider);
     if (preferred) {
-      providers = [preferred, ...providers.filter(p => p.name !== preferredProvider)];
+      providers = [preferred];
     }
   }
   
