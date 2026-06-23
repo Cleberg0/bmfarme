@@ -15,9 +15,27 @@ export default function SmsBlock({ clientId, onSmsReady, onPhoneGenerated }: Sms
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [provider, setProvider] = useState<'SMS24H' | 'HEROSMS'>('SMS24H');
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState(0);
   const lastDeliveredCodeRef = useRef<string | null>(null);
 
+  const SMS_TIMEOUT = 300; // 5 minutos em segundos
+
   const { status, smsCode, isPolling, phoneNumber } = useSmsPoll(logId, Boolean(logId));
+
+  // Timer countdown
+  useEffect(() => {
+    if (!startTime || smsCode || status === 'EXPIRED' || status === 'FAILED') return;
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startTime, smsCode, status]);
+
+  const remaining = Math.max(0, SMS_TIMEOUT - elapsed);
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
 
   // Dispara onSmsReady quando código chegar
   useEffect(() => {
@@ -38,11 +56,14 @@ export default function SmsBlock({ clientId, onSmsReady, onPhoneGenerated }: Sms
     setError('');
     setLogId(null);
     setConfirmed(false);
+    setStartTime(null);
+    setElapsed(0);
     lastDeliveredCodeRef.current = null;
     try {
-      const { data } = await api.post('/sms/generate', { clientId });
+      const { data } = await api.post('/sms/generate', { clientId, provider });
       const nextLogId: string = data.id ?? data.smsLog?.id;
       setLogId(nextLogId);
+      setStartTime(Date.now());
     } catch (err) {
       setError(
         axios.isAxiosError(err)
@@ -58,6 +79,37 @@ export default function SmsBlock({ clientId, onSmsReady, onPhoneGenerated }: Sms
 
   return (
     <div className="space-y-5">
+      {/* Seletor de provider SMS */}
+      <div className="space-y-2">
+        <label className="text-sm font-semibold text-slate-300">Provedor SMS</label>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setProvider('SMS24H')}
+            className={`rounded-xl border px-4 py-3 text-left transition ${
+              provider === 'SMS24H'
+                ? 'border-emerald-500 bg-emerald-500/10'
+                : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'
+            }`}
+          >
+            <p className={`text-sm font-semibold ${provider === 'SMS24H' ? 'text-emerald-300' : 'text-slate-200'}`}>SMS24h</p>
+            <p className="text-xs text-slate-500 mt-0.5">Principal — sms24h.org</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setProvider('HEROSMS')}
+            className={`rounded-xl border px-4 py-3 text-left transition ${
+              provider === 'HEROSMS'
+                ? 'border-purple-500 bg-purple-500/10'
+                : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'
+            }`}
+          >
+            <p className={`text-sm font-semibold ${provider === 'HEROSMS' ? 'text-purple-300' : 'text-slate-200'}`}>HeroSMS</p>
+            <p className="text-xs text-slate-500 mt-0.5">Backup — hero-sms.com</p>
+          </button>
+        </div>
+      </div>
+
       {/* Botão gerar */}
       <button
         type="button"
@@ -93,11 +145,18 @@ export default function SmsBlock({ clientId, onSmsReady, onPhoneGenerated }: Sms
         </div>
       )}
 
-      {/* Status aguardando */}
+      {/* Status aguardando + timer */}
       {isPolling && !smsCode && (
-        <div className="flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3">
-          <span className="h-3 w-3 animate-pulse rounded-full bg-blue-400" />
-          <p className="text-sm font-medium text-blue-300">Aguardando chegada do SMS... (atualiza automaticamente)</p>
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="h-3 w-3 animate-pulse rounded-full bg-blue-400" />
+            <p className="text-sm font-medium text-blue-300">Aguardando SMS...</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`font-mono text-lg font-bold ${remaining < 60 ? 'text-red-400' : remaining < 120 ? 'text-amber-400' : 'text-blue-300'}`}>
+              {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+            </span>
+          </div>
         </div>
       )}
 

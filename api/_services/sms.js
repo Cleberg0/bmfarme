@@ -39,8 +39,17 @@ function makeRequest(provider, params) {
   }).then(res => typeof res.data === 'string' ? res.data.trim() : String(res.data).trim());
 }
 
-async function buyNumber(service = DEFAULT_SERVICE, country = DEFAULT_COUNTRY) {
-  const providers = getProviders();
+async function buyNumber(service = DEFAULT_SERVICE, country = DEFAULT_COUNTRY, preferredProvider) {
+  let providers = getProviders();
+  
+  // Se o usuario escolheu um provider específico, coloca ele primeiro
+  if (preferredProvider) {
+    const preferred = providers.find(p => p.name === preferredProvider);
+    if (preferred) {
+      providers = [preferred, ...providers.filter(p => p.name !== preferredProvider)];
+    }
+  }
+  
   let lastError;
 
   for (const provider of providers) {

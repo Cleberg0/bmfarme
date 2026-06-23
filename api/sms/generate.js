@@ -11,14 +11,14 @@ module.exports = async function handler(req, res) {
   if (!user) return;
 
   try {
-    const { clientId, service } = req.body;
+    const { clientId, service, provider: preferredProvider } = req.body;
     if (!clientId) return res.status(400).json({ error: 'clientId é obrigatório.' });
 
     const client = await prisma.client.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
 
-    const smsData = await buyNumber(service);
-    if (smsData.externalId) await activateNumber(smsData.externalId);
+    const smsData = await buyNumber(service, undefined, preferredProvider);
+    if (smsData.externalId) await activateNumber(smsData.externalId, smsData.provider);
 
     const smsLog = await prisma.smsLog.create({
       data: {
