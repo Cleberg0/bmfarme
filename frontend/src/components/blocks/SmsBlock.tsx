@@ -20,7 +20,7 @@ export default function SmsBlock({ clientId, onSmsReady, onPhoneGenerated }: Sms
   const [elapsed, setElapsed] = useState(0);
   const lastDeliveredCodeRef = useRef<string | null>(null);
 
-  const SMS_TIMEOUT = provider === 'SMS24H' ? 1200 : 300; // SMS24h=20min, HeroSMS=5min
+  const SMS_TIMEOUT = 1200; // 20 minutos pra ambos providers
 
   const { status, smsCode, isPolling, phoneNumber } = useSmsPoll(logId, Boolean(logId));
 
