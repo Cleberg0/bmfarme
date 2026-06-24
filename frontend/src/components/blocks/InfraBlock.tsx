@@ -32,7 +32,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
   const [subdomain, setSubdomain] = useState('');
   const [metaCode, setMetaCode] = useState('');
   const [method, setMethod] = useState<VerificationMethod>('meta_tag');
-  const [cfAccount, setCfAccount] = useState<'verificadametta' | 'zaplifydisparo'>('verificadametta');
+  const [cfAccount, setCfAccount] = useState<'empresasverrificada' | 'zaplifydisparo'>('empresasverrificada');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [deployed, setDeployed] = useState<{ subdomain: string; workerUrl: string; domainId: string } | null>(null);
@@ -103,15 +103,15 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
         <div className="grid gap-2 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => setCfAccount('verificadametta')}
+            onClick={() => setCfAccount('empresasverrificada')}
             className={`rounded-xl border px-4 py-3 text-left transition ${
-              cfAccount === 'verificadametta'
+              cfAccount === 'empresasverrificada'
                 ? 'border-emerald-500 bg-emerald-500/10'
                 : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'
             }`}
           >
-            <p className={`text-sm font-semibold ${cfAccount === 'verificadametta' ? 'text-emerald-300' : 'text-slate-200'}`}>verificadametta</p>
-            <p className="text-xs text-slate-500 mt-0.5">.verificadametta.workers.dev</p>
+            <p className={`text-sm font-semibold ${cfAccount === 'empresasverrificada' ? 'text-emerald-300' : 'text-slate-200'}`}>empresasverrificada</p>
+            <p className="text-xs text-slate-500 mt-0.5">.empresasverrificada.workers.dev</p>
           </button>
           <button
             type="button"
