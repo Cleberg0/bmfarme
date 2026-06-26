@@ -58,20 +58,25 @@ async function deployNetlifySite(subdomain, htmlContent) {
       }
     }
 
-    // 2. Adiciona domínio customizado se configurado (async — não bloqueia deploy)
+    // 2. Adiciona domínio customizado se configurado e provisiona SSL
     if (CUSTOM_DOMAIN) {
-      axios.put(`${NETLIFY_API}/sites/${siteId}`, {
-        custom_domain: customDomain,
-      }, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        timeout: 15000,
-      }).then(() => {
-        // Provisiona SSL após vincular domínio
-        return axios.post(`${NETLIFY_API}/sites/${siteId}/ssl`, {}, {
+      try {
+        await axios.put(`${NETLIFY_API}/sites/${siteId}`, {
+          custom_domain: customDomain,
+        }, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           timeout: 15000,
         });
-      }).catch(e => console.log(`[Netlify] Custom domain/SSL setup (non-fatal): ${e.message}`));
+        // Aguarda DNS propagar um pouco antes de pedir SSL
+        await new Promise(r => setTimeout(r, 3000));
+        // Provisiona SSL
+        await axios.post(`${NETLIFY_API}/sites/${siteId}/ssl`, {}, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          timeout: 15000,
+        }).catch(() => {}); // ignora erro se SSL ainda não pronto
+      } catch (e) {
+        console.log(`[Netlify] Custom domain setup (non-fatal): ${e.message}`);
+      }
     }
 
     // 3. Deploy com arquivo único (index.html) via file digest
