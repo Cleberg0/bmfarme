@@ -32,9 +32,10 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
   const [subdomain, setSubdomain] = useState('');
   const [metaCode, setMetaCode] = useState('');
   const [method, setMethod] = useState<VerificationMethod>('meta_tag');
-  const [cfAccount, setCfAccount] = useState<'empresasverrificada' | 'zaplifydisparo' | 'netlify'>('empresasverrificada');
+  const [cfAccount, setCfAccount] = useState<'empresasverrificada' | 'zaplifydisparo' | 'netlify' | 'dynadot'>('dynadot');
   const netlifyDomains = ['verificaativos.shop', 'ativosmeta.shop', 'verificadameta.shop'];
   const [selectedNetlifyDomain, setSelectedNetlifyDomain] = useState(netlifyDomains[0]);
+  const [customDomainName, setCustomDomainName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [deployed, setDeployed] = useState<{ subdomain: string; workerUrl: string; domainId: string } | null>(null);
@@ -60,16 +61,32 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post('/infra/deploy', {
-        subdomain: subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, ''),
-        metaVerificationCode: metaCode.trim(),
-        verificationMethod: method,
-        clientId,
-        cfAccount,
-        netlifyDomain: cfAccount === 'netlify' ? selectedNetlifyDomain : undefined,
-        customRazao: razaoSocial || undefined,
-        customFantasia: nomeFantasia || undefined,
-      });
+      let data;
+      if (cfAccount === 'dynadot') {
+        // Registra domínio + publica site
+        const domainName = `${customDomainName}.sbs`;
+        const res = await api.post('/infra/deploy', {
+          action: 'register_domain',
+          domainName,
+          clientId,
+          metaVerificationCode: metaCode.trim(),
+          customRazao: razaoSocial || undefined,
+          customFantasia: nomeFantasia || undefined,
+        });
+        data = res.data;
+      } else {
+        const res = await api.post('/infra/deploy', {
+          subdomain: subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, ''),
+          metaVerificationCode: metaCode.trim(),
+          verificationMethod: method,
+          clientId,
+          cfAccount,
+          netlifyDomain: cfAccount === 'netlify' ? selectedNetlifyDomain : undefined,
+          customRazao: razaoSocial || undefined,
+          customFantasia: nomeFantasia || undefined,
+        });
+        data = res.data;
+      }
       const id: string = data.id ?? '';
       const url: string = data.workerUrl ?? '';
       setDeployed({ subdomain: data.subdomain ?? subdomain, workerUrl: url, domainId: id });
@@ -94,9 +111,11 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
 
   // Preview do domínio que será gerado
   const cleanSub = subdomain ? subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') : '';
-  const previewDomain = cleanSub
-    ? (cfAccount === 'netlify' ? `${cleanSub}.${selectedNetlifyDomain}` : `${cleanSub}-${cfAccount}.${cfAccount}.workers.dev`)
-    : '';
+  const previewDomain = cfAccount === 'dynadot'
+    ? (customDomainName ? `${customDomainName}.sbs` : '')
+    : cleanSub
+      ? (cfAccount === 'netlify' ? `${cleanSub}.${selectedNetlifyDomain}` : `${cleanSub}-${cfAccount}.${cfAccount}.workers.dev`)
+      : '';
 
   return (
     <div className="space-y-5">
@@ -104,30 +123,18 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
       {/* Seletor de conta Cloudflare */}
       <div className="space-y-2">
         <label className="text-sm font-semibold text-slate-300">Publicar em</label>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => setCfAccount('empresasverrificada')}
+            onClick={() => setCfAccount('dynadot')}
             className={`rounded-xl border px-4 py-3 text-left transition ${
-              cfAccount === 'empresasverrificada'
-                ? 'border-emerald-500 bg-emerald-500/10'
+              cfAccount === 'dynadot'
+                ? 'border-orange-500 bg-orange-500/10'
                 : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'
             }`}
           >
-            <p className={`text-sm font-semibold ${cfAccount === 'empresasverrificada' ? 'text-emerald-300' : 'text-slate-200'}`}>empresasverrificada</p>
-            <p className="text-xs text-slate-500 mt-0.5">.empresasverrificada.workers.dev</p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setCfAccount('zaplifydisparo')}
-            className={`rounded-xl border px-4 py-3 text-left transition ${
-              cfAccount === 'zaplifydisparo'
-                ? 'border-purple-500 bg-purple-500/10'
-                : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'
-            }`}
-          >
-            <p className={`text-sm font-semibold ${cfAccount === 'zaplifydisparo' ? 'text-purple-300' : 'text-slate-200'}`}>zaplifydisparo</p>
-            <p className="text-xs text-slate-500 mt-0.5">.zaplifydisparo.workers.dev</p>
+            <p className={`text-sm font-semibold ${cfAccount === 'dynadot' ? 'text-orange-300' : 'text-slate-200'}`}>🌐 Domínio Próprio</p>
+            <p className="text-xs text-slate-500 mt-0.5">Registra .sbs (~R$5) + publica</p>
           </button>
           <button
             type="button"
@@ -139,7 +146,31 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
             }`}
           >
             <p className={`text-sm font-semibold ${cfAccount === 'netlify' ? 'text-cyan-300' : 'text-slate-200'}`}>Netlify</p>
-            <p className="text-xs text-slate-500 mt-0.5">.nexusmktlucro.shop</p>
+            <p className="text-xs text-slate-500 mt-0.5">Subdomínio (domínios existentes)</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCfAccount('empresasverrificada')}
+            className={`rounded-xl border px-4 py-3 text-left transition ${
+              cfAccount === 'empresasverrificada'
+                ? 'border-emerald-500 bg-emerald-500/10'
+                : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'
+            }`}
+          >
+            <p className={`text-sm font-semibold ${cfAccount === 'empresasverrificada' ? 'text-emerald-300' : 'text-slate-200'}`}>empresasverrificada</p>
+            <p className="text-xs text-slate-500 mt-0.5">.workers.dev</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCfAccount('zaplifydisparo')}
+            className={`rounded-xl border px-4 py-3 text-left transition ${
+              cfAccount === 'zaplifydisparo'
+                ? 'border-purple-500 bg-purple-500/10'
+                : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'
+            }`}
+          >
+            <p className={`text-sm font-semibold ${cfAccount === 'zaplifydisparo' ? 'text-purple-300' : 'text-slate-200'}`}>zaplifydisparo</p>
+            <p className="text-xs text-slate-500 mt-0.5">.workers.dev</p>
           </button>
         </div>
       </div>
@@ -164,6 +195,25 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Campo domínio próprio (Dynadot) */}
+      {cfAccount === 'dynadot' && (
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-300">Nome do domínio</label>
+          <div className="flex items-center gap-2">
+            <input
+              value={customDomainName}
+              onChange={(e) => setCustomDomainName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              placeholder="gabrielybarbosa"
+              className="flex-1 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-slate-100 outline-none focus:border-orange-500"
+            />
+            <span className="text-sm text-slate-500 whitespace-nowrap">.sbs</span>
+          </div>
+          {customDomainName && (
+            <p className="text-xs text-orange-300 font-mono">{customDomainName}.sbs — será registrado (~R$5)</p>
+          )}
         </div>
       )}
 
@@ -256,7 +306,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
         <button
           type="button"
           onClick={handleDeploy}
-          disabled={loading || !subdomain || !metaCode || !clientId}
+          disabled={loading || (!subdomain && cfAccount !== 'dynadot') || (!customDomainName && cfAccount === 'dynadot') || !metaCode || !clientId}
           className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 font-bold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? (
