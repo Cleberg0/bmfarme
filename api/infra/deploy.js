@@ -1,6 +1,7 @@
 const prisma = require('../_lib/prisma');
 const { verifyAuth, setCors } = require('../_lib/auth');
 const { deployWorker, deleteWorker, buildLandingHtml, generateAiContent, generateFullSiteHtml } = require('../_services/cloudflare');
+const { deployNetlifySite } = require('../_services/netlify');
 
 // Formata telefone pra exibição (41) 96347-5267
 function formatPhoneForReplace(phone) {
@@ -225,8 +226,17 @@ module.exports = async function handler(req, res) {
     // Gera HTML com templates variados (16 layouts diferentes)
     const html = buildLandingHtml({ ...siteParams, subdomain: cleanSubdomain });
 
-    // Publica o worker (cria ou atualiza — a API do Cloudflare faz upsert)
-    const { workerName, url } = await deployWorker(cleanSubdomain, html, metaVerificationCode, method, targetSub);
+    // Publica o site (Cloudflare Workers ou Netlify)
+    let workerName, url;
+    if (targetSub === 'netlify') {
+      const result = await deployNetlifySite(cleanSubdomain, html);
+      workerName = result.siteName;
+      url = result.url;
+    } else {
+      const result = await deployWorker(cleanSubdomain, html, metaVerificationCode, method, targetSub);
+      workerName = result.workerName;
+      url = result.url;
+    }
     deployedWorkerName = workerName;
 
     // Salva ou atualiza no banco
