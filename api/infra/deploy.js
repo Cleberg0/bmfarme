@@ -188,11 +188,17 @@ module.exports = async function handler(req, res) {
       const env = require('../_lib/env');
       const sub1 = env.cloudflareWorkersSubdomain;
       const sub2 = process.env.CLOUDFLARE_WORKERS_SUBDOMAIN_2 || '';
+      const netlifyDomain = process.env.NETLIFY_CUSTOM_DOMAIN || '';
       const items = domains.map(d => {
-        // Detecta em qual conta o worker está pelo sufixo no nome
         const wName = d.cloudflareZoneId || '';
         let workerUrl;
-        if (sub2 && wName.endsWith(`-${sub2}`)) {
+        // Detecta se é Netlify (não tem sufixo de worker CF)
+        const isNetlify = !wName.endsWith(`-${sub1}`) && !wName.endsWith(`-${sub2}`);
+        if (isNetlify) {
+          workerUrl = netlifyDomain
+            ? `https://${wName}.${netlifyDomain}`
+            : `https://${wName}.netlify.app`;
+        } else if (sub2 && wName.endsWith(`-${sub2}`)) {
           workerUrl = `https://${wName}.${sub2}.workers.dev`;
         } else {
           workerUrl = `https://${wName}.${sub1}.workers.dev`;
