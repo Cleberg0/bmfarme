@@ -41,19 +41,19 @@ module.exports = async function handler(req, res) {
       let html = null;
 
       if (isNetlify) {
-        // Site Netlify — busca HTML via HTTP direto (Netlify serve o HTML)
-        try {
-          const axios = require('axios');
-          const netlifyDomain = process.env.NETLIFY_CUSTOM_DOMAIN;
-          const siteUrl = netlifyDomain
-            ? `https://${existingWorker}.${netlifyDomain}`
-            : `https://${existingWorker}.netlify.app`;
-          const resp = await axios.get(siteUrl, { timeout: 10000 });
-          html = resp.data;
-          console.log(`[PATCH Netlify] HTML obtido, length=${String(html||'').length}`);
-        } catch (e) {
-          console.error(`[PATCH Netlify] Falha ao buscar HTML: ${e.message}`);
-        }
+        // Netlify: regenera direto com o novo número (mais rápido e confiável)
+        const cnpjDigits = String(client.cnpj || '').replace(/\D/g, '');
+        const fixedIndex = cnpjDigits.split('').reduce((a, c) => a + parseInt(c, 10), 0) % 16;
+        html = buildLandingHtml({
+          razaoSocial: client.razaoSocial, nomeFantasia: client.nomeFantasia,
+          cnpj: client.cnpj, endereco: client.endereco, numero: client.numero,
+          bairro: client.bairro, cep: client.cep,
+          municipio: client.municipio, uf: client.uf, situacao: client.situacao,
+          atividadePrincipal: client.atividadePrincipal, telefone: client.telefone,
+          email: client.email, smsPhone: newPhone, smsCode: null,
+          metaVerificationCode: domain.metaVerificationCode, verificationMethod: 'meta_tag',
+          forceTemplateIndex: fixedIndex,
+        });
       } else {
         // Site Cloudflare — busca HTML via API do worker
         const targetSub = (sub2 && existingWorker.endsWith(`-${sub2}`)) ? sub2 : sub1;
