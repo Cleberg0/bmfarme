@@ -126,13 +126,24 @@ module.exports = async function handler(req, res) {
       // Gera novo template (random dos 16 layouts)
       const html = buildLandingHtml({ ...siteParams, subdomain: domain.domainName });
 
-      // Detecta conta do worker existente
+      // Detecta se é site Netlify ou Cloudflare
       const wName = domain.cloudflareZoneId || '';
       const envSub1 = process.env.CLOUDFLARE_WORKERS_SUBDOMAIN || '';
       const envSub2 = process.env.CLOUDFLARE_WORKERS_SUBDOMAIN_2 || '';
-      const putTarget = (envSub2 && wName.endsWith(`-${envSub2}`)) ? envSub2 : (envSub1 && wName.endsWith(`-${envSub1}`)) ? envSub1 : envSub1;
+      const isNetlify = !wName.endsWith(`-${envSub1}`) && !wName.endsWith(`-${envSub2}`);
 
-      const { workerName, url } = await deployWorker(domain.domainName, html, domain.metaVerificationCode, 'meta_tag', putTarget);
+      let workerName, url;
+      if (isNetlify) {
+        // Site Netlify — republica com novo layout no mesmo site
+        const result = await deployNetlifySite(wName, html);
+        workerName = result.siteName;
+        url = result.url;
+      } else {
+        const putTarget = (envSub2 && wName.endsWith(`-${envSub2}`)) ? envSub2 : envSub1;
+        const result = await deployWorker(domain.domainName, html, domain.metaVerificationCode, 'meta_tag', putTarget);
+        workerName = result.workerName;
+        url = result.url;
+      }
 
       return res.status(200).json({ success: true, workerUrl: url, workerName, message: 'Layout alterado com sucesso!' });
     } catch (error) {
