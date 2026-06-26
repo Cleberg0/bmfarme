@@ -50,14 +50,22 @@ function QuickPhoneUpdate() {
     setLoading(true);
     setResult(null);
     try {
-      // Extrai o subdomínio da URL pra achar o domainId
+      // Extrai o subdomínio da URL e busca o site correspondente
+      const cleanUrl = url.trim().replace(/\/$/, '');
+      // Tenta extrair o subdomínio: xxx.nexusmktlucro.shop ou xxx-empresa.workers.dev
+      const urlWithoutProtocol = cleanUrl.replace(/^https?:\/\//, '');
+      const subdomain = urlWithoutProtocol.split('.')[0]; // pega a primeira parte
+
       const { data: sites } = await api.get('/infra/deploy');
-      const cleanUrl = url.trim().replace(/\/$/, '').replace('https://', '').replace('http://', '');
-      const site = sites.find((s: { workerUrl: string; cloudflareZoneId?: string; domainName?: string }) => {
-        const siteUrl = (s.workerUrl || '').replace(/\/$/, '').replace('https://', '').replace('http://', '');
-        return siteUrl === cleanUrl || cleanUrl.includes(siteUrl) || siteUrl.includes(cleanUrl) || cleanUrl.startsWith(s.domainName || '') || cleanUrl.startsWith(s.cloudflareZoneId || '');
+      const site = sites.find((s: { workerUrl?: string; domainName?: string; cloudflareZoneId?: string; id?: string }) => {
+        const sWorkerUrl = (s.workerUrl || '').replace(/\/$/, '');
+        const sName = s.domainName || s.cloudflareZoneId || '';
+        return sWorkerUrl === cleanUrl ||
+          sWorkerUrl === `https://${urlWithoutProtocol}` ||
+          sName === subdomain ||
+          (s.cloudflareZoneId || '').startsWith(subdomain);
       });
-      if (!site) { setResult({ ok: false, msg: 'Site não encontrado. Verifique a URL.' }); return; }
+      if (!site) { setResult({ ok: false, msg: `Site não encontrado (buscado: ${subdomain}). Verifique a URL.` }); return; }
       await api.patch('/infra/deploy', { domainId: site.id, newPhone: phone.trim() });
       setResult({ ok: true, msg: 'Número atualizado no site!' });
       setPhone('');
