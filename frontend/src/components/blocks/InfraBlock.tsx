@@ -54,6 +54,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
       .join('')
       .slice(0, 20);
     setSubdomain(slug || 'empresa');
+    setCustomDomainName(slug || 'empresa');
   }, [razaoSocial]);
 
   const handleDeploy = async () => {
