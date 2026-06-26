@@ -212,7 +212,11 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
             <span className="text-sm text-slate-500 whitespace-nowrap">.sbs</span>
           </div>
           {customDomainName && (
-            <p className="text-xs text-orange-300 font-mono">{customDomainName}.sbs — será registrado (~R$5)</p>
+            <div className="flex items-center gap-2 mt-1 p-2 rounded-lg border border-orange-500/30 bg-orange-500/5">
+              <span className="text-sm font-mono text-orange-300 break-all">{customDomainName}.sbs</span>
+              <CopyButton value={`${customDomainName}.sbs`} label="Domínio" />
+              <span className="text-xs text-slate-500">← cole no Meta pra gerar a tag</span>
+            </div>
           )}
         </div>
       )}
