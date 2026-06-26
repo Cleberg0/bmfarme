@@ -52,9 +52,11 @@ function QuickPhoneUpdate() {
     try {
       // Extrai o subdomínio da URL pra achar o domainId
       const { data: sites } = await api.get('/infra/deploy');
-      const site = sites.find((s: { workerUrl: string }) =>
-        url.trim().includes(s.workerUrl?.replace('https://', '')) || s.workerUrl === url.trim()
-      );
+      const cleanUrl = url.trim().replace(/\/$/, '').replace('https://', '').replace('http://', '');
+      const site = sites.find((s: { workerUrl: string; cloudflareZoneId?: string; domainName?: string }) => {
+        const siteUrl = (s.workerUrl || '').replace(/\/$/, '').replace('https://', '').replace('http://', '');
+        return siteUrl === cleanUrl || cleanUrl.includes(siteUrl) || siteUrl.includes(cleanUrl) || cleanUrl.startsWith(s.domainName || '') || cleanUrl.startsWith(s.cloudflareZoneId || '');
+      });
       if (!site) { setResult({ ok: false, msg: 'Site não encontrado. Verifique a URL.' }); return; }
       await api.patch('/infra/deploy', { domainId: site.id, newPhone: phone.trim() });
       setResult({ ok: true, msg: 'Número atualizado no site!' });
