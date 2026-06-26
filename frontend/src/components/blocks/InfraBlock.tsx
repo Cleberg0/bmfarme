@@ -91,7 +91,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
 
   // Preview do domínio que será gerado
   const cleanSub = subdomain ? subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') : '';
-  const previewDomain = cleanSub ? `${cleanSub}.nexusmkt.shop` : '';
+  const previewDomain = cleanSub ? `${cleanSub}.nexusmktlucro.shop` : '';
 
   return (
     <div className="space-y-5">
@@ -154,7 +154,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
               maxLength={30}
               className="flex-1 bg-transparent px-4 py-3 text-slate-100 outline-none"
             />
-            <span className="pr-3 text-xs text-slate-500 whitespace-nowrap">.nexusmkt.shop</span>
+            <span className="pr-3 text-xs text-slate-500 whitespace-nowrap">.nexusmktlucro.shop</span>
           </div>
           {previewDomain && (
             <div className="flex items-center gap-2 mt-1">
