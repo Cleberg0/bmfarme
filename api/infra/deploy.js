@@ -301,7 +301,6 @@ module.exports = async function handler(req, res) {
 
       // Cria CNAME + configura domínio customizado no Cloudflare pra subdomínio acessível
       try {
-        // Detecta zona baseada no netlifyDomain passado pelo frontend
         const domainZones = {
           'helixprobet.com': process.env.CLOUDFLARE_ZONE_HELIXPROBET,
           'verificaativos.online': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS_ONLINE,
@@ -314,26 +313,31 @@ module.exports = async function handler(req, res) {
         if (zoneId) {
           const axios = require('axios');
           const cfHeaders = { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, 'Content-Type': 'application/json' };
+          const customHostname = `${cleanSubdomain}.${chosenDomain}`;
           
-          // Cria CNAME: subdomain.helixprobet.com -> workerName.empresasverrificada.workers.dev (proxied pra SSL)
-          const cnameRes = await axios.post(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`,
-            { type: 'CNAME', name: cleanSubdomain, content: `${workerName}.${process.env.CLOUDFLARE_WORKERS_SUBDOMAIN || 'empresasverrificada'}.workers.dev`, ttl: 1, proxied: true },
+          // Adiciona Custom Domain ao Worker (isso cria CNAME + route automaticamente)
+          await axios.put(
+            `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${workerName}/domains`,
+            { hostname: customHostname, zone_id: zoneId },
             { headers: cfHeaders, timeout: 15000 }
-          );
-          console.log(`[CF CNAME] Criado OK: ${cleanSubdomain}.${chosenDomain}`);
+          ).catch(async (e) => {
+            // Se falhar com PUT, tenta POST em /domains
+            console.log(`[CF Domain] PUT falhou, tentando POST: ${e.message}`);
+            await axios.post(
+              `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/domains`,
+              { hostname: customHostname, zone_id: zoneId, service: workerName, environment: 'production' },
+              { headers: cfHeaders, timeout: 15000 }
+            );
+          });
 
-          // URL final é o subdomínio do .com (com SSL via Cloudflare proxy)
-          url = `https://${cleanSubdomain}.${chosenDomain}`;
+          url = `https://${customHostname}`;
+          console.log(`[CF] Custom domain adicionado: ${customHostname} -> ${workerName}`);
         } else {
-          console.log(`[CF CNAME] SKIP - zoneId vazio. Env vars: HELIXPROBET=${process.env.CLOUDFLARE_ZONE_HELIXPROBET}, ONLINE=${process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS_ONLINE}`);
+          console.log(`[CF CNAME] SKIP - zoneId vazio`);
         }
       } catch (cfErr) {
-        console.log(`[CF CNAME] Erro: ${cfErr.response?.data?.errors?.[0]?.message || cfErr.message}`);
-        // Se CNAME já existe, ainda usa a URL customizada
-        if (cfErr.response?.data?.errors?.[0]?.code === 81053) {
-          const chosenDomain = netlifyDomain || 'helixprobet.com';
-          url = `https://${cleanSubdomain}.${chosenDomain}`;
-        }
+        console.log(`[CF Domain] Erro: ${cfErr.response?.data?.errors?.[0]?.message || cfErr.message}`);
+        // Mantém URL do workers.dev como fallback
       }
     } else {
       const result = await deployNetlifySite(cleanSubdomain, html, netlifyDomain);
