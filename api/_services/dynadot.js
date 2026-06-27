@@ -60,37 +60,43 @@ async function registerDomain(domain, duration = 1) {
 /**
  * Configura DNS do domínio com A record pro Netlify
  * Usa set_dns2 com formato correto (main_record_type0 + main_record0)
+ * Tenta até 3 vezes com delay (domínio recém-registrado pode não estar pronto)
  */
 async function setDnsForNetlify(domain) {
   const key = getKey();
   if (!key) throw new Error('DYNADOT_API_KEY não configurado');
 
-  // Configura registro A apontando pro Netlify load balancer
-  const url = `${DYNADOT_API}?key=${encodeURIComponent(key)}&command=set_dns2&domain=${encodeURIComponent(domain)}&main_record_type0=a&main_record0=75.2.60.5`;
-  
-  const res = await axios.get(url, { timeout: 15000 });
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    // Espera antes de tentar (domínio recém-registrado precisa de tempo)
+    if (attempt > 1) await new Promise(r => setTimeout(r, 5000));
 
-  const data = res.data;
-  console.log('[Dynadot] set_dns2 response:', JSON.stringify(data));
-  
-  if (data?.SetDnsResponse?.Status === 'success' || data?.SetDnsResponse?.ResponseCode === 0) {
-    console.log(`[Dynadot] DNS A record configurado: ${domain} -> 75.2.60.5`);
-    return true;
+    const url = `${DYNADOT_API}?key=${encodeURIComponent(key)}&command=set_dns2&domain=${encodeURIComponent(domain)}&main_record_type0=a&main_record0=75.2.60.5`;
+    
+    try {
+      const res = await axios.get(url, { timeout: 15000 });
+      const data = res.data;
+      console.log(`[Dynadot] set_dns2 attempt ${attempt} response:`, JSON.stringify(data));
+      
+      if (data?.SetDnsResponse?.Status === 'success' || data?.SetDnsResponse?.ResponseCode === 0) {
+        console.log(`[Dynadot] DNS A record configurado: ${domain} -> 75.2.60.5 (tentativa ${attempt})`);
+        return true;
+      }
+    } catch (err) {
+      console.error(`[Dynadot] set_dns2 attempt ${attempt} error:`, err.message);
+    }
   }
 
-  // Se falhar, tenta de novo com params separados
-  const res2 = await axios.get(DYNADOT_API, {
-    params: {
-      key,
-      command: 'set_dns2',
-      domain,
-      main_record_type0: 'a',
-      main_record0: '75.2.60.5',
-    },
-    timeout: 15000,
-  });
-
-  console.log('[Dynadot] set_dns2 retry response:', JSON.stringify(res2.data));
+  // Última tentativa com params separados
+  try {
+    const res2 = await axios.get(DYNADOT_API, {
+      params: { key, command: 'set_dns2', domain, main_record_type0: 'a', main_record0: '75.2.60.5' },
+      timeout: 15000,
+    });
+    console.log('[Dynadot] set_dns2 final retry response:', JSON.stringify(res2.data));
+  } catch (err) {
+    console.error('[Dynadot] set_dns2 final retry error:', err.message);
+  }
+  
   return true;
 }
 
