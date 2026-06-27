@@ -2,7 +2,7 @@ const prisma = require('../_lib/prisma');
 const { verifyAuth, setCors } = require('../_lib/auth');
 const { buildLandingHtml } = require('../_services/cloudflare');
 const { deployNetlifySite, provisionSsl } = require('../_services/netlify');
-const { checkDomain, registerDomain, setDnsForNetlify } = require('../_services/dynadot');
+const { checkDomain, registerDomain, setDnsForNetlify } = require('../_services/porkbun');
 
 // Formata telefone pra exibição (41) 96347-5267
 function formatPhoneForReplace(phone) {

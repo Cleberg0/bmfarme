@@ -73,7 +73,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
       let data;
       if (cfAccount === 'dynadot') {
         // Registra domínio + publica site
-        const domainName = `${customDomainName}.cfd`;
+        const domainName = `${customDomainName}.xyz`;
         const res = await api.post('/infra/deploy', {
           action: 'register_domain',
           domainName,
@@ -100,8 +100,8 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
       const url: string = data.workerUrl ?? '';
       setDeployed({ subdomain: data.subdomain ?? subdomain, workerUrl: url, domainId: id });
       onDomainReady(id, url);
-      // Inicia countdown de propagação DNS (5 min pra domínio novo)
-      if (cfAccount === 'dynadot') setDnsCountdown(300);
+      // Inicia countdown de propagação DNS (1 min - Porkbun DNS é rápido)
+      if (cfAccount === 'dynadot') setDnsCountdown(60);
     } catch (err) {
       setError(
         axios.isAxiosError(err)
@@ -137,7 +137,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
             }`}
           >
             <p className={`text-sm font-semibold ${cfAccount === 'dynadot' ? 'text-orange-300' : 'text-slate-200'}`}>🌐 Domínio Próprio</p>
-            <p className="text-xs text-slate-500 mt-0.5">Registra .cfd (~R$1) + publica</p>
+            <p className="text-xs text-slate-500 mt-0.5">Registra .xyz (~R$6) + DNS instantâneo</p>
           </button>
           <button
             type="button"
@@ -231,15 +231,15 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
               className="flex-1 bg-transparent px-4 py-3 text-slate-100 outline-none"
             />
             <span className="pr-3 text-xs text-slate-500 whitespace-nowrap">
-              {cfAccount === 'dynadot' ? '.cfd' : `.${selectedNetlifyDomain}`}
+              {cfAccount === 'dynadot' ? '.xyz' : `.${selectedNetlifyDomain}`}
             </span>
           </div>
           {((cfAccount === 'dynadot' && customDomainName) || (cfAccount !== 'dynadot' && subdomain)) && (
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm font-mono text-emerald-400 break-all">
-                {cfAccount === 'dynadot' ? `${customDomainName}.cfd` : `${subdomain}.${selectedNetlifyDomain}`}
+                {cfAccount === 'dynadot' ? `${customDomainName}.xyz` : `${subdomain}.${selectedNetlifyDomain}`}
               </span>
-              <CopyButton value={cfAccount === 'dynadot' ? `${customDomainName}.cfd` : `${subdomain}.${selectedNetlifyDomain}`} label="Domínio" />
+              <CopyButton value={cfAccount === 'dynadot' ? `${customDomainName}.xyz` : `${subdomain}.${selectedNetlifyDomain}`} label="Domínio" />
               {cfAccount === 'dynadot' && <span className="text-xs text-slate-500">← cole no Meta</span>}
             </div>
           )}
@@ -384,7 +384,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
               </svg>
               <div>
                 <p className="font-bold">⏳ Aguarde a propagação DNS — {Math.floor(dnsCountdown / 60)}:{String(dnsCountdown % 60).padStart(2, '0')}</p>
-                <p className="text-xs text-yellow-400/70 mt-0.5">O domínio foi registrado. O site ficará acessível em até 5 minutos. NÃO clique em nada até o timer zerar.</p>
+                <p className="text-xs text-yellow-400/70 mt-0.5">O domínio foi registrado. O site ficará acessível em até 1 minuto. NÃO clique em nada até o timer zerar.</p>
               </div>
             </div>
           )}
