@@ -31,7 +31,9 @@ async function deployNetlifySite(subdomain, htmlContent, forcedDomain) {
 
   const siteName = subdomain.slice(0, 60);
   const chosenDomain = forcedDomain || getCustomDomain();
-  const customDomain = chosenDomain ? `${siteName}.${chosenDomain}` : '';
+  // Se forcedDomain é um domínio raiz completo (ex: 59938967nathalia.sbs), usa ele direto
+  const isRootDomain = forcedDomain && forcedDomain.includes('.');
+  const customDomain = isRootDomain ? forcedDomain : (chosenDomain ? `${siteName}.${chosenDomain}` : '');
 
   try {
     // 1. Cria o site (ou usa existente) com domínio customizado
