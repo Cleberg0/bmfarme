@@ -304,6 +304,7 @@ module.exports = async function handler(req, res) {
         // Detecta zona baseada no netlifyDomain passado pelo frontend
         const domainZones = {
           'helixprobet.com': process.env.CLOUDFLARE_ZONE_HELIXPROBET,
+          'verificaativos.online': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS_ONLINE,
           'verificaativos.shop': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS,
         };
         const chosenDomain = netlifyDomain || 'helixprobet.com';
