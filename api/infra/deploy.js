@@ -237,15 +237,21 @@ module.exports = async function handler(req, res) {
       const client = await prisma.client.findUnique({ where: { id: clientId } });
       if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
 
-      // 1. Verifica disponibilidade
-      const check = await checkDomain(domainName);
-      if (!check.available) return res.status(422).json({ error: `Domínio ${domainName} não está disponível.` });
+      // Verifica se o domínio já existe no banco (já registrado antes)
+      const existing = await prisma.domain.findFirst({ where: { domainName } });
+      const needsRegistration = !existing;
 
-      // 2. Registra o domínio
-      await registerDomain(domainName);
+      if (needsRegistration) {
+        // 1. Verifica disponibilidade
+        const check = await checkDomain(domainName);
+        if (!check.available) return res.status(422).json({ error: `Domínio ${domainName} não está disponível.` });
 
-      // 3. Configura DNS pra Netlify
-      await setDnsForNetlify(domainName);
+        // 2. Registra o domínio
+        await registerDomain(domainName);
+
+        // 3. Configura DNS pra Netlify
+        await setDnsForNetlify(domainName);
+      }
 
       // 4. Busca SMS mais recente
       const smsLog = await prisma.smsLog.findFirst({
@@ -269,12 +275,20 @@ module.exports = async function handler(req, res) {
       const siteName = domainName.replace(/\./g, '-');
       const result = await deployNetlifySite(siteName, html, domainName);
 
-      // 7. Salva no banco
-      const domain = await prisma.domain.create({
-        data: { domainName, cloudflareZoneId: siteName, metaVerificationCode, status: 'ACTIVE', clientId, userId: user.id }
-      });
+      // 7. Salva ou atualiza no banco
+      let domain;
+      if (existing) {
+        domain = await prisma.domain.update({
+          where: { id: existing.id },
+          data: { metaVerificationCode, status: 'ACTIVE', userId: user.id }
+        });
+      } else {
+        domain = await prisma.domain.create({
+          data: { domainName, cloudflareZoneId: siteName, metaVerificationCode, status: 'ACTIVE', clientId, userId: user.id }
+        });
+      }
 
-      return res.status(201).json({ ...domain, workerUrl: `https://${domainName}`, message: `Domínio ${domainName} registrado e site publicado!` });
+      return res.status(existing ? 200 : 201).json({ ...domain, workerUrl: `https://${domainName}`, message: needsRegistration ? `Domínio ${domainName} registrado e site publicado!` : `Site republicado em ${domainName}!` });
     } catch (error) {
       return res.status(error.statusCode || 500).json({ error: error.message });
     }
