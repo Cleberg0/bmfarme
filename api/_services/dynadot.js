@@ -58,14 +58,28 @@ async function registerDomain(domain, duration = 1) {
 }
 
 /**
- * Configura DNS do domínio com CNAME pra Netlify
+ * Configura DNS do domínio com A record pro Netlify
+ * Usa set_dns2 com formato correto (main_record_type0 + main_record0)
  */
 async function setDnsForNetlify(domain) {
   const key = getKey();
   if (!key) throw new Error('DYNADOT_API_KEY não configurado');
 
   // Configura registro A apontando pro Netlify load balancer
-  const res = await axios.get(DYNADOT_API, {
+  const url = `${DYNADOT_API}?key=${encodeURIComponent(key)}&command=set_dns2&domain=${encodeURIComponent(domain)}&main_record_type0=a&main_record0=75.2.60.5`;
+  
+  const res = await axios.get(url, { timeout: 15000 });
+
+  const data = res.data;
+  console.log('[Dynadot] set_dns2 response:', JSON.stringify(data));
+  
+  if (data?.SetDnsResponse?.Status === 'success' || data?.SetDnsResponse?.ResponseCode === 0) {
+    console.log(`[Dynadot] DNS A record configurado: ${domain} -> 75.2.60.5`);
+    return true;
+  }
+
+  // Se falhar, tenta de novo com params separados
+  const res2 = await axios.get(DYNADOT_API, {
     params: {
       key,
       command: 'set_dns2',
@@ -76,13 +90,7 @@ async function setDnsForNetlify(domain) {
     timeout: 15000,
   });
 
-  const data = res.data;
-  if (data?.SetDnsResponse?.Status === 'success' || data?.SetDnsResponse?.ResponseCode === 0) {
-    console.log(`[Dynadot] DNS configurado pra Netlify: ${domain}`);
-    return true;
-  }
-
-  console.log('[Dynadot] DNS response:', JSON.stringify(data));
+  console.log('[Dynadot] set_dns2 retry response:', JSON.stringify(res2.data));
   return true;
 }
 
