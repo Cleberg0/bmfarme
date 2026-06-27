@@ -296,11 +296,18 @@ module.exports = async function handler(req, res) {
     // Gera HTML com templates variados (16 layouts diferentes)
     const html = buildLandingHtml({ ...siteParams, subdomain: cleanSubdomain });
 
-    // Publica o site (sempre Netlify)
+    // Publica o site (Cloudflare Workers ou Netlify)
     let workerName, url;
-    const result = await deployNetlifySite(cleanSubdomain, html, netlifyDomain);
-    workerName = result.siteName;
-    url = result.url;
+    if (cfAccount === 'empresasverrificada' || cfAccount === 'zaplifydisparo') {
+      const targetSub = cfAccount === 'zaplifydisparo' ? (process.env.CLOUDFLARE_WORKERS_SUBDOMAIN_2 || 'zaplifydisparo') : undefined;
+      const result = await deployWorker(cleanSubdomain, html, metaVerificationCode, method, targetSub);
+      workerName = result.workerName;
+      url = result.url;
+    } else {
+      const result = await deployNetlifySite(cleanSubdomain, html, netlifyDomain);
+      workerName = result.siteName;
+      url = result.url;
+    }
 
     // Salva ou atualiza no banco
     let domain;
