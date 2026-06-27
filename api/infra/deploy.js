@@ -309,23 +309,31 @@ module.exports = async function handler(req, res) {
         };
         const chosenDomain = netlifyDomain || 'helixprobet.com';
         const zoneId = domainZones[chosenDomain] || process.env.CLOUDFLARE_ZONE_HELIXPROBET || '';
+        console.log(`[CF CNAME] domain=${chosenDomain} zoneId=${zoneId} netlifyDomain=${netlifyDomain}`);
 
         if (zoneId) {
           const axios = require('axios');
           const cfHeaders = { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, 'Content-Type': 'application/json' };
           
           // Cria CNAME: subdomain.helixprobet.com -> workerName.empresasverrificada.workers.dev (proxied pra SSL)
-          await axios.post(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`,
+          const cnameRes = await axios.post(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`,
             { type: 'CNAME', name: cleanSubdomain, content: `${workerName}.${process.env.CLOUDFLARE_WORKERS_SUBDOMAIN || 'empresasverrificada'}.workers.dev`, ttl: 1, proxied: true },
             { headers: cfHeaders, timeout: 15000 }
-          ).catch(e => console.log(`[CF CNAME] ${e.response?.data?.errors?.[0]?.message || e.message}`));
+          );
+          console.log(`[CF CNAME] Criado OK: ${cleanSubdomain}.${chosenDomain}`);
 
           // URL final é o subdomínio do .com (com SSL via Cloudflare proxy)
           url = `https://${cleanSubdomain}.${chosenDomain}`;
-          console.log(`[CF] CNAME criado: ${cleanSubdomain}.${chosenDomain} -> ${workerName}.workers.dev`);
+        } else {
+          console.log(`[CF CNAME] SKIP - zoneId vazio. Env vars: HELIXPROBET=${process.env.CLOUDFLARE_ZONE_HELIXPROBET}, ONLINE=${process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS_ONLINE}`);
         }
       } catch (cfErr) {
-        console.log(`[CF] CNAME erro (não fatal): ${cfErr.message}`);
+        console.log(`[CF CNAME] Erro: ${cfErr.response?.data?.errors?.[0]?.message || cfErr.message}`);
+        // Se CNAME já existe, ainda usa a URL customizada
+        if (cfErr.response?.data?.errors?.[0]?.code === 81053) {
+          const chosenDomain = netlifyDomain || 'helixprobet.com';
+          url = `https://${cleanSubdomain}.${chosenDomain}`;
+        }
       }
     } else {
       const result = await deployNetlifySite(cleanSubdomain, html, netlifyDomain);
