@@ -145,9 +145,17 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
             <p className="text-sm font-semibold text-slate-500">Porkbun .xyz</p>
             <p className="text-xs text-slate-600 mt-0.5">Sem saldo</p>
           </button>
-          <button type="button" disabled className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-left opacity-40 cursor-not-allowed">
-            <p className="text-sm font-semibold text-slate-500">Cloudflare</p>
-            <p className="text-xs text-slate-600 mt-0.5">Indisponível</p>
+          <button
+            type="button"
+            onClick={() => setCfAccount('empresasverrificada')}
+            className={`rounded-xl border px-4 py-3 text-left transition ${
+              cfAccount === 'empresasverrificada'
+                ? 'border-blue-500 bg-blue-500/10'
+                : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'
+            }`}
+          >
+            <p className={`text-sm font-semibold ${cfAccount === 'empresasverrificada' ? 'text-blue-300' : 'text-slate-200'}`}>☁️ empresasverrificada</p>
+            <p className="text-xs text-slate-500 mt-0.5">Subdomínio Workers (grátis)</p>
           </button>
         </div>
       </div>
