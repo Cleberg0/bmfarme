@@ -315,39 +315,35 @@ module.exports = async function handler(req, res) {
       workerName = result.workerName;
       url = result.url;
 
-      // Cria CNAME + configura domínio customizado no Cloudflare pra subdomínio acessível
-      try {
-        const domainZones = {
-          'helixprobet.com': process.env.CLOUDFLARE_ZONE_HELIXPROBET,
-          'verificaativos.online': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS_ONLINE,
-          'verifica.cfd': process.env.CLOUDFLARE_ZONE_VERIFICA_CFD,
-          'verificaativos.shop': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS,
-        };
-        const chosenDomain = netlifyDomain || 'helixprobet.com';
-        const zoneId = domainZones[chosenDomain] || process.env.CLOUDFLARE_ZONE_HELIXPROBET || '';
-        console.log(`[CF CNAME] domain=${chosenDomain} zoneId=${zoneId} netlifyDomain=${netlifyDomain}`);
+      // Define URL customizada SEMPRE (o domínio que o usuário escolheu)
+      const chosenDomain = netlifyDomain || 'helixprobet.com';
+      const customHostname = `${cleanSubdomain}.${chosenDomain}`;
+      url = `https://${customHostname}`;
 
-        if (zoneId) {
+      // Cria Custom Domain no Cloudflare (em background, não bloqueia)
+      const domainZones = {
+        'helixprobet.com': process.env.CLOUDFLARE_ZONE_HELIXPROBET,
+        'verificaativos.online': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS_ONLINE,
+        'verifica.cfd': process.env.CLOUDFLARE_ZONE_VERIFICA_CFD,
+        'verificaativos.shop': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS,
+      };
+      const zoneId = domainZones[chosenDomain] || process.env.CLOUDFLARE_ZONE_HELIXPROBET || '';
+
+      if (zoneId) {
+        try {
           const axios = require('axios');
           const cfHeaders = { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, 'Content-Type': 'application/json' };
-          const customHostname = `${cleanSubdomain}.${chosenDomain}`;
-          
-          // Adiciona Custom Domain ao Worker via API correta
-          const domainRes = await axios.put(
+          await axios.put(
             `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/domains`,
             { hostname: customHostname, zone_id: zoneId, service: workerName, environment: 'production' },
             { headers: cfHeaders, timeout: 15000 }
           );
-          console.log(`[CF] Custom domain OK: ${customHostname} -> ${workerName} (success=${domainRes.data?.success})`);
-
-          url = `https://${customHostname}`;
-        } else {
-          console.log(`[CF CNAME] SKIP - zoneId vazio`);
+          console.log(`[CF] Custom domain OK: ${customHostname}`);
+        } catch (cfErr) {
+          console.log(`[CF Domain] ERRO: ${cfErr.response?.status} ${JSON.stringify(cfErr.response?.data?.errors || cfErr.message)}`);
         }
-      } catch (cfErr) {
-        const errMsg = cfErr.response?.data?.errors?.[0]?.message || cfErr.response?.data || cfErr.message;
-        console.log(`[CF Domain] ERRO COMPLETO: ${JSON.stringify(errMsg)}`);
-        console.log(`[CF Domain] Status: ${cfErr.response?.status} Token: ${process.env.CLOUDFLARE_API_TOKEN?.slice(0,10)}... AccountID: ${process.env.CLOUDFLARE_ACCOUNT_ID}`);
+      } else {
+        console.log(`[CF] SKIP zoneId vazio pra ${chosenDomain}`);
       }
     } else {
       const result = await deployNetlifySite(cleanSubdomain, html, netlifyDomain);
