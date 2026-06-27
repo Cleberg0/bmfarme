@@ -304,6 +304,7 @@ module.exports = async function handler(req, res) {
         const domainZones = {
           'helixprobet.com': process.env.CLOUDFLARE_ZONE_HELIXPROBET,
           'verificaativos.online': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS_ONLINE,
+          'verifica.cfd': process.env.CLOUDFLARE_ZONE_VERIFICA_CFD,
           'verificaativos.shop': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS,
         };
         const chosenDomain = netlifyDomain || 'helixprobet.com';
