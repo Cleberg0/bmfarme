@@ -39,15 +39,6 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [deployed, setDeployed] = useState<{ subdomain: string; workerUrl: string; domainId: string } | null>(null);
-  const [dnsCountdown, setDnsCountdown] = useState(0);
-
-  // Timer de propagação DNS
-  useEffect(() => {
-    if (dnsCountdown <= 0) return;
-    const timer = setInterval(() => setDnsCountdown(prev => prev - 1), 1000);
-    return () => clearInterval(timer);
-  }, [dnsCountdown]);
-
   // Sugere subdomínio automaticamente quando a razão social chega
   useEffect(() => {
     if (!razaoSocial) return;
@@ -102,9 +93,6 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
       const url: string = data.workerUrl ?? '';
       setDeployed({ subdomain: data.subdomain ?? subdomain, workerUrl: url, domainId: id });
       onDomainReady(id, url);
-      // Countdown: Porkbun=60s (rápido), Dynadot=300s (lento)
-      if (cfAccount === 'porkbun') setDnsCountdown(60);
-      else if (cfAccount === 'dynadot') setDnsCountdown(300);
     } catch (err) {
       setError(
         axios.isAxiosError(err)
@@ -323,7 +311,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
         {deployed && (
           <button
             type="button"
-            disabled={loading || dnsCountdown > 0}
+            disabled={loading}
             onClick={async () => {
               if (!deployed.domainId) return;
               setLoading(true);
@@ -350,7 +338,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
         {deployed && (
           <button
             type="button"
-            disabled={loading || dnsCountdown > 0}
+            disabled={loading}
             onClick={async () => {
               if (!deployed.subdomain) return;
               setLoading(true);
@@ -386,25 +374,6 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-3">
           <p className="text-sm font-bold text-emerald-300">✅ Site publicado com sucesso!</p>
 
-          {/* Aviso de propagação DNS */}
-          {dnsCountdown > 0 && (
-            <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-300 flex items-center gap-3">
-              <svg className="h-5 w-5 animate-spin shrink-0" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" className="stroke-current opacity-20" strokeWidth="3" />
-                <path d="M22 12a10 10 0 0 0-10-10" className="stroke-current" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-              <div>
-                <p className="font-bold">⏳ Aguarde a propagação DNS — {Math.floor(dnsCountdown / 60)}:{String(dnsCountdown % 60).padStart(2, '0')}</p>
-                <p className="text-xs text-yellow-400/70 mt-0.5">O domínio foi registrado. O site ficará acessível em até 1 minuto. NÃO clique em nada até o timer zerar.</p>
-              </div>
-            </div>
-          )}
-          {dnsCountdown === 0 && (cfAccount === 'dynadot' || cfAccount === 'porkbun') && (
-            <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-xs text-green-300">
-              ✅ DNS propagado — o site já deve estar acessível. Se mostrar erro de SSL, clique em "Forçar SSL" abaixo.
-            </div>
-          )}
-
           <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-3">
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-1">URL do site</p>
@@ -416,7 +385,7 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
                 href={deployed.workerUrl}
                 target="_blank"
                 rel="noreferrer"
-                className={`rounded-lg border border-slate-600 bg-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:text-white transition ${dnsCountdown > 0 ? 'pointer-events-none opacity-40' : ''}`}
+                className="rounded-lg border border-slate-600 bg-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:text-white transition"
               >
                 Abrir ↗
               </a>
