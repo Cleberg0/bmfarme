@@ -345,8 +345,9 @@ module.exports = async function handler(req, res) {
           console.log(`[CF CNAME] SKIP - zoneId vazio`);
         }
       } catch (cfErr) {
-        console.log(`[CF Domain] Erro: ${cfErr.response?.data?.errors?.[0]?.message || cfErr.message}`);
-        // Mantém URL do workers.dev como fallback
+        const errMsg = cfErr.response?.data?.errors?.[0]?.message || cfErr.response?.data || cfErr.message;
+        console.log(`[CF Domain] ERRO COMPLETO: ${JSON.stringify(errMsg)}`);
+        console.log(`[CF Domain] Status: ${cfErr.response?.status} Token: ${process.env.CLOUDFLARE_API_TOKEN?.slice(0,10)}... AccountID: ${process.env.CLOUDFLARE_ACCOUNT_ID}`);
       }
     } else {
       const result = await deployNetlifySite(cleanSubdomain, html, netlifyDomain);
