@@ -162,19 +162,26 @@ async function provisionSsl(siteName) {
   const token = getToken();
   if (!token) throw new Error('NETLIFY_TOKEN não configurado');
 
-  // Busca o site pelo nome
-  const listRes = await axios.get(`${NETLIFY_API}/sites?name=${siteName}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    timeout: 15000,
-  });
-  const site = listRes.data?.find(s => s.name === siteName);
+  // Busca o site pelo nome (tenta com e sem slug)
+  const names = [siteName, siteName.replace(/\./g, '-')];
+  let site = null;
+  
+  for (const name of names) {
+    const listRes = await axios.get(`${NETLIFY_API}/sites?name=${name}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 15000,
+    });
+    site = listRes.data?.find(s => s.name === name);
+    if (site) break;
+  }
+  
   if (!site) throw new Error(`Site ${siteName} não encontrado no Netlify`);
 
   const res = await axios.post(`${NETLIFY_API}/sites/${site.id}/ssl`, {}, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     timeout: 15000,
   });
-  console.log(`[Netlify] SSL provisionado para ${siteName}`);
+  console.log(`[Netlify] SSL provisionado para ${site.name}`);
   return res.data;
 }
 

@@ -216,7 +216,7 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      return res.status(existing ? 200 : 201).json({ ...domain, workerUrl: `https://${domainName}`, message: needsRegistration ? `Domínio ${domainName} registrado e site publicado!` : `Site republicado em ${domainName}!` });
+      return res.status(existing ? 200 : 201).json({ ...domain, workerUrl: `https://${domainName}`, subdomain: siteName, message: needsRegistration ? `Domínio ${domainName} registrado e site publicado!` : `Site republicado em ${domainName}!` });
     } catch (error) {
       return res.status(error.statusCode || 500).json({ error: error.message });
     }
