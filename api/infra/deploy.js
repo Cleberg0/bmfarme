@@ -303,10 +303,42 @@ module.exports = async function handler(req, res) {
       const result = await deployWorker(cleanSubdomain, html, metaVerificationCode, method, targetSub);
       workerName = result.workerName;
       url = result.url;
+
+      // Adiciona TXT record no Cloudflare pra verificação Meta via DNS
+      try {
+        let cleanCode = metaVerificationCode || '';
+        const codeMatch = cleanCode.match(/content=["']([^"']+)["']/);
+        if (codeMatch) cleanCode = codeMatch[1];
+
+        // Detecta qual zona usar baseado no domínio do Netlify ou padrão
+        const zoneId = process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS || '';
+        if (zoneId && cleanCode) {
+          await addDnsTxtRecord(zoneId, `${cleanSubdomain}.verificaativos.shop`, `facebook-domain-verification=${cleanCode}`);
+          console.log(`[TXT] Adicionado verificação Meta pra ${cleanSubdomain}.verificaativos.shop`);
+        }
+      } catch (txtErr) {
+        console.log(`[TXT] Erro (não fatal): ${txtErr.message}`);
+      }
     } else {
       const result = await deployNetlifySite(cleanSubdomain, html, netlifyDomain);
       workerName = result.siteName;
       url = result.url;
+
+      // Adiciona TXT record pra subdomínios Netlify também
+      try {
+        let cleanCode = metaVerificationCode || '';
+        const codeMatch = cleanCode.match(/content=["']([^"']+)["']/);
+        if (codeMatch) cleanCode = codeMatch[1];
+
+        const zoneId = process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS || '';
+        const domain = netlifyDomain || 'verificaativos.shop';
+        if (zoneId && cleanCode) {
+          await addDnsTxtRecord(zoneId, `${cleanSubdomain}.${domain}`, `facebook-domain-verification=${cleanCode}`);
+          console.log(`[TXT] Adicionado verificação Meta pra ${cleanSubdomain}.${domain}`);
+        }
+      } catch (txtErr) {
+        console.log(`[TXT] Erro (não fatal): ${txtErr.message}`);
+      }
     }
 
     // Salva ou atualiza no banco
