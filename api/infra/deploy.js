@@ -332,23 +332,15 @@ module.exports = async function handler(req, res) {
           const cfHeaders = { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, 'Content-Type': 'application/json' };
           const customHostname = `${cleanSubdomain}.${chosenDomain}`;
           
-          // Adiciona Custom Domain ao Worker (isso cria CNAME + route automaticamente)
-          await axios.put(
-            `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${workerName}/domains`,
-            { hostname: customHostname, zone_id: zoneId },
+          // Adiciona Custom Domain ao Worker via API correta
+          const domainRes = await axios.put(
+            `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/domains`,
+            { hostname: customHostname, zone_id: zoneId, service: workerName, environment: 'production' },
             { headers: cfHeaders, timeout: 15000 }
-          ).catch(async (e) => {
-            // Se falhar com PUT, tenta POST em /domains
-            console.log(`[CF Domain] PUT falhou, tentando POST: ${e.message}`);
-            await axios.post(
-              `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/domains`,
-              { hostname: customHostname, zone_id: zoneId, service: workerName, environment: 'production' },
-              { headers: cfHeaders, timeout: 15000 }
-            );
-          });
+          );
+          console.log(`[CF] Custom domain OK: ${customHostname} -> ${workerName} (success=${domainRes.data?.success})`);
 
           url = `https://${customHostname}`;
-          console.log(`[CF] Custom domain adicionado: ${customHostname} -> ${workerName}`);
         } else {
           console.log(`[CF CNAME] SKIP - zoneId vazio`);
         }
