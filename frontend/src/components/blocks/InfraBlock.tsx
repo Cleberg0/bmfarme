@@ -110,9 +110,6 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
     await handleDeploy();
   };
 
-  // Preview do domínio
-  const cleanSub = subdomain ? subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') : '';
-
   return (
     <div className="space-y-5">
 
@@ -211,45 +208,30 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
           <label className="text-sm font-semibold text-slate-300">
             {cfAccount === 'dynadot' ? 'Nome do domínio' : 'Subdomínio'}
           </label>
-          {cfAccount === 'dynadot' ? (
-            <>
-              <div className="flex items-center rounded-xl border border-slate-700 bg-slate-800/80 overflow-hidden focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500/30">
-                <input
-                  value={customDomainName}
-                  onChange={(e) => setCustomDomainName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="nomedapessoa"
-                  maxLength={30}
-                  className="flex-1 bg-transparent px-4 py-3 text-slate-100 outline-none"
-                />
-                <span className="pr-3 text-sm text-slate-500 whitespace-nowrap">.cfd</span>
-              </div>
-              {customDomainName && (
-                <div className="flex items-center gap-2 mt-1 p-2 rounded-lg border border-orange-500/30 bg-orange-500/5">
-                  <span className="text-sm font-mono text-orange-300 break-all">{customDomainName}.cfd</span>
-                  <CopyButton value={`${customDomainName}.cfd`} label="Domínio" />
-                  <span className="text-xs text-slate-500">← cole no Meta pra gerar a tag</span>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="flex items-center rounded-xl border border-slate-700 bg-slate-800/80 overflow-hidden focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/30">
-                <input
-                  value={subdomain}
-                  onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="nomedocliente"
-                  maxLength={30}
-                  className="flex-1 bg-transparent px-4 py-3 text-slate-100 outline-none"
-                />
-                <span className="pr-3 text-xs text-slate-500 whitespace-nowrap">.{selectedNetlifyDomain}</span>
-              </div>
-              {subdomain && (
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm font-mono text-emerald-400 break-all">{subdomain}.{selectedNetlifyDomain}</span>
-                  <CopyButton value={`${subdomain}.${selectedNetlifyDomain}`} label="Domínio" />
-                </div>
-              )}
-            </>
+          <div className="flex items-center rounded-xl border border-slate-700 bg-slate-800/80 overflow-hidden focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/30">
+            <input
+              value={cfAccount === 'dynadot' ? customDomainName : subdomain}
+              onChange={(e) => {
+                const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                if (cfAccount === 'dynadot') setCustomDomainName(val);
+                else setSubdomain(val);
+              }}
+              placeholder="nomedapessoa"
+              maxLength={30}
+              className="flex-1 bg-transparent px-4 py-3 text-slate-100 outline-none"
+            />
+            <span className="pr-3 text-xs text-slate-500 whitespace-nowrap">
+              {cfAccount === 'dynadot' ? '.cfd' : `.${selectedNetlifyDomain}`}
+            </span>
+          </div>
+          {((cfAccount === 'dynadot' && customDomainName) || (cfAccount !== 'dynadot' && subdomain)) && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-sm font-mono text-emerald-400 break-all">
+                {cfAccount === 'dynadot' ? `${customDomainName}.cfd` : `${subdomain}.${selectedNetlifyDomain}`}
+              </span>
+              <CopyButton value={cfAccount === 'dynadot' ? `${customDomainName}.cfd` : `${subdomain}.${selectedNetlifyDomain}`} label="Domínio" />
+              {cfAccount === 'dynadot' && <span className="text-xs text-slate-500">← cole no Meta</span>}
+            </div>
           )}
         </div>
 
