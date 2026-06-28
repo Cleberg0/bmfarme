@@ -375,6 +375,30 @@ module.exports = async function handler(req, res) {
         workerName = 'verificaconta-wildcard';
         url = `https://${cleanSubdomain}.verificaconta.com`;
         console.log(`[CF] Wildcard verificaconta.com — skip deploy, subdomain=${cleanSubdomain}`);
+
+        // Cria TXT record pra verificação Meta via DNS
+        try {
+          let cleanCode = metaVerificationCode || '';
+          const codeMatch = cleanCode.match(/content=["']([^"']+)["']/);
+          if (codeMatch) cleanCode = codeMatch[1];
+          // Remove prefixo se vier completo
+          cleanCode = cleanCode.replace('facebook-domain-verification=', '');
+
+          if (cleanCode) {
+            const axios = require('axios');
+            const cfHeaders = { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, 'Content-Type': 'application/json' };
+            const zoneId = process.env.CLOUDFLARE_ZONE_VERIFICACONTA || '';
+            if (zoneId) {
+              await axios.post(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`,
+                { type: 'TXT', name: cleanSubdomain, content: `facebook-domain-verification=${cleanCode}`, ttl: 1 },
+                { headers: cfHeaders, timeout: 15000 }
+              ).catch(e => console.log(`[TXT] Erro (pode ja existir): ${e.response?.data?.errors?.[0]?.message || e.message}`));
+              console.log(`[TXT] Criado: ${cleanSubdomain}.verificaconta.com = facebook-domain-verification=${cleanCode}`);
+            }
+          }
+        } catch (txtErr) {
+          console.log(`[TXT] Erro geral: ${txtErr.message}`);
+        }
       } else {
         // Fluxo original: deploy Worker + Custom Domain
         const targetSub = cfAccount === 'zaplifydisparo' ? (process.env.CLOUDFLARE_WORKERS_SUBDOMAIN_2 || 'zaplifydisparo') : undefined;
