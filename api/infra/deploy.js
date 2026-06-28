@@ -40,7 +40,8 @@ module.exports = async function handler(req, res) {
       });
 
       const cnpjDigits = String(client.cnpj || '').replace(/\D/g, '');
-      const fixedIndex = cnpjDigits.split('').reduce((a, c) => a + parseInt(c, 10), 0) % 24;
+      const updatedSeed = domain.updatedAt ? new Date(domain.updatedAt).getTime() : 0;
+      const fixedIndex = (cnpjDigits.split('').reduce((a, c) => a + parseInt(c, 10), 0) + Math.floor(updatedSeed / 1000)) % 24;
 
       const html = buildLandingHtml({
         razaoSocial: client.razaoSocial, nomeFantasia: client.nomeFantasia,
@@ -149,7 +150,8 @@ module.exports = async function handler(req, res) {
       const isWildcard = wName === 'verificaconta-wildcard';
       let resultUrl;
       if (isWildcard) {
-        // Wildcard: não precisa redeploy, HTML é gerado on-the-fly pelo Worker
+        // Wildcard: atualiza timestamp pra mudar o layout (seed = updatedAt)
+        await prisma.domain.update({ where: { id: domain.id }, data: { status: 'ACTIVE' } });
         resultUrl = `https://${domain.domainName}.verificaconta.com`;
       } else if (isWorker) {
         const result = await deployWorker(wName.replace('-empresasverrificada','').replace('-zaplifydisparo',''), html, domain.metaVerificationCode, 'meta_tag');
