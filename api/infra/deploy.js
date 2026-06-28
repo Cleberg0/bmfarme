@@ -116,6 +116,48 @@ module.exports = async function handler(req, res) {
     }
   }
 
+  // ── GET ?action=get_site — wildcard Worker busca HTML do subdomínio ────
+  if (req.method === 'GET' && req.query?.action === 'get_site') {
+    try {
+      const workerKey = req.headers['x-worker-key'];
+      if (workerKey !== 'bmfarme-worker-2026')
+        return res.status(401).json({ error: 'Unauthorized' });
+
+      const { subdomain } = req.query;
+      if (!subdomain) return res.status(400).json({ error: 'subdomain é obrigatório.' });
+
+      const domain = await prisma.domain.findFirst({ where: { domainName: subdomain, status: 'ACTIVE' } });
+      if (!domain) return res.status(404).json({ error: 'Site não encontrado.' });
+
+      const client = await prisma.client.findUnique({ where: { id: domain.clientId } });
+      if (!client) return res.status(404).json({ error: 'Cliente não encontrado.' });
+
+      const smsLog = await prisma.smsLog.findFirst({
+        where: { clientId: client.id, status: { in: ['WAITING', 'RECEIVED'] } },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const cnpjDigits = String(client.cnpj || '').replace(/\D/g, '');
+      const fixedIndex = cnpjDigits.split('').reduce((a, c) => a + parseInt(c, 10), 0) % 24;
+
+      const html = buildLandingHtml({
+        razaoSocial: client.razaoSocial, nomeFantasia: client.nomeFantasia,
+        cnpj: client.cnpj, endereco: client.endereco, numero: client.numero,
+        bairro: client.bairro, cep: client.cep,
+        municipio: client.municipio, uf: client.uf, situacao: client.situacao,
+        atividadePrincipal: client.atividadePrincipal, telefone: client.telefone,
+        email: client.email, smsPhone: smsLog?.phoneNumber || null, smsCode: smsLog?.smsCode || null,
+        metaVerificationCode: domain.metaVerificationCode, verificationMethod: 'meta_tag',
+        forceTemplateIndex: fixedIndex,
+      });
+
+      res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+      return res.status(200).send(html);
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ error: error.message });
+    }
+  }
+
   // ── GET ?action=check_domain — verifica disponibilidade de domínio ────
   if (req.method === 'GET' && req.query?.action === 'check_domain') {
     try {
@@ -152,10 +194,16 @@ module.exports = async function handler(req, res) {
         },
       });
       const items = domains.map(d => {
-        // Se domainName contém ponto, é domínio raiz (Dynadot)
-        const workerUrl = d.domainName.includes('.')
-          ? `https://${d.domainName}`
-          : `https://${d.cloudflareZoneId || d.domainName}.netlify.app`;
+        let workerUrl;
+        if (d.domainName.includes('.')) {
+          // Domínio raiz (Dynadot)
+          workerUrl = `https://${d.domainName}`;
+        } else if (d.cloudflareZoneId === 'verificaconta-wildcard') {
+          // Wildcard verificaconta.com
+          workerUrl = `https://${d.domainName}.verificaconta.com`;
+        } else {
+          workerUrl = `https://${d.cloudflareZoneId || d.domainName}.netlify.app`;
+        }
         return { ...d, workerUrl };
       });
       return res.status(200).json(items);
@@ -310,41 +358,50 @@ module.exports = async function handler(req, res) {
     // Publica o site (Cloudflare Workers ou Netlify)
     let workerName, url;
     if (cfAccount === 'empresasverrificada' || cfAccount === 'zaplifydisparo') {
-      const targetSub = cfAccount === 'zaplifydisparo' ? (process.env.CLOUDFLARE_WORKERS_SUBDOMAIN_2 || 'zaplifydisparo') : undefined;
-      const result = await deployWorker(cleanSubdomain, html, metaVerificationCode, method, targetSub);
-      workerName = result.workerName;
-      url = result.url;
-
-      // Define URL customizada SEMPRE (o domínio que o usuário escolheu)
       const chosenDomain = netlifyDomain || 'helixprobet.com';
-      const customHostname = `${cleanSubdomain}.${chosenDomain}`;
-      url = `https://${customHostname}`;
 
-      // Cria Custom Domain no Cloudflare (em background, não bloqueia)
-      const domainZones = {
-        'verificaconta.com': process.env.CLOUDFLARE_ZONE_VERIFICACONTA,
-        'helixprobet.com': process.env.CLOUDFLARE_ZONE_HELIXPROBET,
-        'verificaativos.online': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS_ONLINE,
-        'verifica.cfd': process.env.CLOUDFLARE_ZONE_VERIFICA_CFD,
-        'verificaativos.shop': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS,
-      };
-      const zoneId = domainZones[chosenDomain] || process.env.CLOUDFLARE_ZONE_HELIXPROBET || '';
-
-      if (zoneId) {
-        try {
-          const axios = require('axios');
-          const cfHeaders = { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, 'Content-Type': 'application/json' };
-          await axios.put(
-            `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/domains`,
-            { hostname: customHostname, zone_id: zoneId, service: workerName, environment: 'production' },
-            { headers: cfHeaders, timeout: 15000 }
-          );
-          console.log(`[CF] Custom domain OK: ${customHostname}`);
-        } catch (cfErr) {
-          console.log(`[CF Domain] ERRO: ${cfErr.response?.status} ${JSON.stringify(cfErr.response?.data?.errors || cfErr.message)}`);
-        }
+      // ── Wildcard verificaconta.com: sem Worker individual, sem Custom Domain ──
+      if (cfAccount === 'empresasverrificada' && chosenDomain === 'verificaconta.com') {
+        workerName = 'verificaconta-wildcard';
+        url = `https://${cleanSubdomain}.verificaconta.com`;
+        console.log(`[CF] Wildcard verificaconta.com — skip deploy, subdomain=${cleanSubdomain}`);
       } else {
-        console.log(`[CF] SKIP zoneId vazio pra ${chosenDomain}`);
+        // Fluxo original: deploy Worker + Custom Domain
+        const targetSub = cfAccount === 'zaplifydisparo' ? (process.env.CLOUDFLARE_WORKERS_SUBDOMAIN_2 || 'zaplifydisparo') : undefined;
+        const result = await deployWorker(cleanSubdomain, html, metaVerificationCode, method, targetSub);
+        workerName = result.workerName;
+        url = result.url;
+
+        // Define URL customizada SEMPRE (o domínio que o usuário escolheu)
+        const customHostname = `${cleanSubdomain}.${chosenDomain}`;
+        url = `https://${customHostname}`;
+
+        // Cria Custom Domain no Cloudflare (em background, não bloqueia)
+        const domainZones = {
+          'verificaconta.com': process.env.CLOUDFLARE_ZONE_VERIFICACONTA,
+          'helixprobet.com': process.env.CLOUDFLARE_ZONE_HELIXPROBET,
+          'verificaativos.online': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS_ONLINE,
+          'verifica.cfd': process.env.CLOUDFLARE_ZONE_VERIFICA_CFD,
+          'verificaativos.shop': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS,
+        };
+        const zoneId = domainZones[chosenDomain] || process.env.CLOUDFLARE_ZONE_HELIXPROBET || '';
+
+        if (zoneId) {
+          try {
+            const axios = require('axios');
+            const cfHeaders = { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, 'Content-Type': 'application/json' };
+            await axios.put(
+              `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/domains`,
+              { hostname: customHostname, zone_id: zoneId, service: workerName, environment: 'production' },
+              { headers: cfHeaders, timeout: 15000 }
+            );
+            console.log(`[CF] Custom domain OK: ${customHostname}`);
+          } catch (cfErr) {
+            console.log(`[CF Domain] ERRO: ${cfErr.response?.status} ${JSON.stringify(cfErr.response?.data?.errors || cfErr.message)}`);
+          }
+        } else {
+          console.log(`[CF] SKIP zoneId vazio pra ${chosenDomain}`);
+        }
       }
     } else {
       const result = await deployNetlifySite(cleanSubdomain, html, netlifyDomain);
