@@ -93,8 +93,11 @@ module.exports = async function handler(req, res) {
 
       // Republica no provider correto (Workers se nome termina com -empresasverrificada)
       const isWorker = existingWorker.endsWith('-empresasverrificada') || existingWorker.endsWith('-zaplifydisparo');
+      const isWildcard = existingWorker === 'verificaconta-wildcard';
       let resultUrl;
-      if (isWorker) {
+      if (isWildcard) {
+        resultUrl = `https://${domain.domainName}.verificaconta.com`;
+      } else if (isWorker) {
         const result = await deployWorker(existingWorker.replace('-empresasverrificada','').replace('-zaplifydisparo',''), html, domain.metaVerificationCode, 'meta_tag');
         resultUrl = result.url;
       } else {
@@ -143,8 +146,12 @@ module.exports = async function handler(req, res) {
       // Republica no provider correto
       const wName = domain.cloudflareZoneId || '';
       const isWorker = wName.endsWith('-empresasverrificada') || wName.endsWith('-zaplifydisparo');
+      const isWildcard = wName === 'verificaconta-wildcard';
       let resultUrl;
-      if (isWorker) {
+      if (isWildcard) {
+        // Wildcard: não precisa redeploy, HTML é gerado on-the-fly pelo Worker
+        resultUrl = `https://${domain.domainName}.verificaconta.com`;
+      } else if (isWorker) {
         const result = await deployWorker(wName.replace('-empresasverrificada','').replace('-zaplifydisparo',''), html, domain.metaVerificationCode, 'meta_tag');
         resultUrl = result.url;
       } else {
