@@ -389,11 +389,18 @@ module.exports = async function handler(req, res) {
             const cfHeaders = { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, 'Content-Type': 'application/json' };
             const zoneId = process.env.CLOUDFLARE_ZONE_VERIFICACONTA || '';
             if (zoneId) {
+              // Cria A record proxied pro subdomínio (garante que DNS resolve mesmo com TXT)
+              await axios.post(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`,
+                { type: 'A', name: cleanSubdomain, content: '192.0.2.1', ttl: 1, proxied: true },
+                { headers: cfHeaders, timeout: 15000 }
+              ).catch(e => console.log(`[A] Pode ja existir: ${e.response?.data?.errors?.[0]?.message || e.message}`));
+
+              // Cria TXT record pra verificação Meta
               await axios.post(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`,
                 { type: 'TXT', name: cleanSubdomain, content: `facebook-domain-verification=${cleanCode}`, ttl: 1 },
                 { headers: cfHeaders, timeout: 15000 }
-              ).catch(e => console.log(`[TXT] Erro (pode ja existir): ${e.response?.data?.errors?.[0]?.message || e.message}`));
-              console.log(`[TXT] Criado: ${cleanSubdomain}.verificaconta.com = facebook-domain-verification=${cleanCode}`);
+              ).catch(e => console.log(`[TXT] Pode ja existir: ${e.response?.data?.errors?.[0]?.message || e.message}`));
+              console.log(`[DNS] A + TXT criados: ${cleanSubdomain}.verificaconta.com`);
             }
           }
         } catch (txtErr) {
