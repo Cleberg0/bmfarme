@@ -3,7 +3,6 @@ import api from '../../api/client';
 import CopyButton from '../ui/CopyButton';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
-import { useAuth } from '../../context/AuthContext';
 
 type VerificationMethod = 'meta_tag' | 'html_file';
 
