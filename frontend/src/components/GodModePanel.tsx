@@ -257,7 +257,6 @@ export default function GodModePanel() {
           </StepSection>
 
           {/* Step 3 — Site */}
-          {user?.email !== 'ronaldo@gmail.com' && user?.email !== 'velhoronaldo@gmail.com' && (
           <StepSection step={3} title="Publicar Site" subtitle="Gera landing page no Cloudflare Workers para verificação Meta">
             <InfraBlock
               clientId={clientId}
@@ -270,7 +269,6 @@ export default function GodModePanel() {
               }}
             />
           </StepSection>
-          )}
 
           {/* Step 4 — WABA */}
           <StepSection step={4} title="Criar WABA" subtitle="Acesse o DataCrazy CRM e crie a WABA vinculada à BM verificada">

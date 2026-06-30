@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import api from '../../api/client';
 import CopyButton from '../ui/CopyButton';
 import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 type VerificationMethod = 'meta_tag' | 'html_file';
 
@@ -33,7 +35,9 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
   const [metaCode, setMetaCode] = useState('');
   const [method, setMethod] = useState<VerificationMethod>('meta_tag');
   const [cfAccount, setCfAccount] = useState<'empresasverrificada' | 'zaplifydisparo' | 'netlify' | 'dynadot' | 'porkbun'>('empresasverrificada');
-  const netlifyDomains = ['verificativos.com', 'ativoscontas.com'];
+  const { user } = useAuth();
+  const isRonaldo = user?.email === 'ronaldo@gmail.com' || user?.email === 'velhoronaldo@gmail.com';
+  const netlifyDomains = isRonaldo ? ['verificametaativos.com'] : ['verificativos.com', 'ativoscontas.com'];
   const [selectedNetlifyDomain, setSelectedNetlifyDomain] = useState(netlifyDomains[0]);
   const [customDomainName, setCustomDomainName] = useState('');
   const [loading, setLoading] = useState(false);
