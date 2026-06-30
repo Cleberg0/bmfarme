@@ -390,6 +390,8 @@ module.exports = async function handler(req, res) {
             const zoneIds = {
               'verificaconta.com': process.env.CLOUDFLARE_ZONE_VERIFICACONTA,
               'ativosmeta.com': process.env.CLOUDFLARE_ZONE_ATIVOSMETA,
+              'verificativos.com': process.env.CLOUDFLARE_ZONE_VERIFICATIVOS,
+              'ativoscontas.com': process.env.CLOUDFLARE_ZONE_ATIVOSCONTAS,
               'verificaativos.online': process.env.CLOUDFLARE_ZONE_VERIFICAATIVOS_ONLINE,
             };
             const zoneId = zoneIds[chosenDomain] || process.env.CLOUDFLARE_ZONE_VERIFICACONTA || '';
