@@ -42,19 +42,18 @@ function StepSection({
 function QuickPhoneUpdate() {
   const [url, setUrl] = useState('');
   const [phone, setPhone] = useState('');
+  const [razao, setRazao] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const handleUpdate = async () => {
-    if (!url.trim() || !phone.trim()) return;
+    if (!url.trim() || (!phone.trim() && !razao.trim())) return;
     setLoading(true);
     setResult(null);
     try {
-      // Extrai o subdomínio da URL e busca o site correspondente
       const cleanUrl = url.trim().replace(/\/$/, '');
-      // Tenta extrair o subdomínio: xxx.nexusmktlucro.shop ou xxx-empresa.workers.dev
       const urlWithoutProtocol = cleanUrl.replace(/^https?:\/\//, '');
-      const subdomain = urlWithoutProtocol.split('.')[0]; // pega a primeira parte
+      const subdomain = urlWithoutProtocol.split('.')[0];
 
       const { data: sites } = await api.get('/infra/deploy');
       const site = sites.find((s: { workerUrl?: string; domainName?: string; cloudflareZoneId?: string; id?: string }) => {
@@ -66,9 +65,15 @@ function QuickPhoneUpdate() {
           (s.cloudflareZoneId || '').startsWith(subdomain);
       });
       if (!site) { setResult({ ok: false, msg: `Site não encontrado (buscado: ${subdomain}). Verifique a URL.` }); return; }
-      await api.patch('/infra/deploy', { domainId: site.id, newPhone: phone.trim() });
-      setResult({ ok: true, msg: 'Número atualizado no site!' });
+
+      await api.patch('/infra/deploy', {
+        domainId: site.id,
+        newPhone: phone.trim() || undefined,
+        customRazao: razao.trim() || undefined,
+      });
+      setResult({ ok: true, msg: 'Site atualizado!' });
       setPhone('');
+      setRazao('');
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || (e instanceof Error ? e.message : 'Erro ao atualizar.');
       setResult({ ok: false, msg });
@@ -81,25 +86,31 @@ function QuickPhoneUpdate() {
     <div className="rounded-2xl border border-slate-700/50 bg-slate-900 transition-all">
       <div className="flex items-center gap-4 border-b border-slate-700/40 px-6 py-4">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-base font-bold text-white">
-          📞
+          ✏️
         </div>
         <div className="flex-1">
-          <h2 className="text-lg font-bold text-slate-100">Atualizar Número em Site</h2>
-          <p className="text-xs text-slate-500">Cole a URL do site já publicado e o novo número SMS</p>
+          <h2 className="text-lg font-bold text-slate-100">Atualizar Site Publicado</h2>
+          <p className="text-xs text-slate-500">Cole a URL e corrija o número ou a razão social</p>
         </div>
       </div>
       <div className="p-6 space-y-3">
+        <input
+          value={url}
+          onChange={e => setUrl(e.target.value)}
+          placeholder="URL do site (ex: https://empresa.verificativos.com)"
+          className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-500"
+        />
         <div className="grid gap-3 sm:grid-cols-2">
           <input
-            value={url}
-            onChange={e => setUrl(e.target.value)}
-            placeholder="URL do site (ex: https://empresa-x7k.zaplifydisparo...)"
-            className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-500"
+            value={razao}
+            onChange={e => setRazao(e.target.value)}
+            placeholder="Nova razão social (opcional)"
+            className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-sm text-slate-100 outline-none focus:border-orange-500"
           />
           <input
             value={phone}
             onChange={e => setPhone(e.target.value)}
-            placeholder="Novo número (ex: 5511999999999)"
+            placeholder="Novo número SMS (opcional)"
             className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-sm text-slate-100 outline-none focus:border-emerald-500"
           />
         </div>
@@ -107,10 +118,10 @@ function QuickPhoneUpdate() {
           <button
             type="button"
             onClick={handleUpdate}
-            disabled={loading || !url.trim() || !phone.trim()}
+            disabled={loading || !url.trim() || (!phone.trim() && !razao.trim())}
             className="rounded-xl bg-amber-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-amber-500 disabled:opacity-50"
           >
-            {loading ? 'Atualizando...' : '🔄 Atualizar Número'}
+            {loading ? 'Atualizando...' : '🔄 Atualizar Site'}
           </button>
           {result && (
             <span className={`text-sm ${result.ok ? 'text-emerald-400' : 'text-red-400'}`}>

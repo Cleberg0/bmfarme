@@ -68,9 +68,9 @@ module.exports = async function handler(req, res) {
   // ── PATCH — republicar site existente com novo número ──────────────────
   if (req.method === 'PATCH') {
     try {
-      const { domainId, newPhone } = req.body;
-      if (!domainId || !newPhone)
-        return res.status(400).json({ error: 'domainId e newPhone são obrigatórios.' });
+      const { domainId, newPhone, customRazao } = req.body;
+      if (!domainId || (!newPhone && !customRazao))
+        return res.status(400).json({ error: 'domainId e ao menos newPhone ou customRazao são obrigatórios.' });
 
       const domain = await prisma.domain.findUnique({ where: { id: domainId } });
       if (!domain) return res.status(404).json({ error: 'Domínio não encontrado.' });
@@ -92,14 +92,15 @@ module.exports = async function handler(req, res) {
       const newIndex = (cnpjDigits.split('').reduce((a, c) => a + parseInt(c, 10), 0) + nameSeed + Math.floor(updatedSeed / 1000)) % 74;
 
       const html = buildLandingHtml({
-        razaoSocial: client.razaoSocial, nomeFantasia: client.nomeFantasia,
+        razaoSocial: customRazao || client.razaoSocial, nomeFantasia: customRazao ? undefined : client.nomeFantasia,
         cnpj: client.cnpj, endereco: client.endereco, numero: client.numero,
         bairro: client.bairro, cep: client.cep,
         municipio: client.municipio, uf: client.uf, situacao: client.situacao,
         atividadePrincipal: client.atividadePrincipal, telefone: client.telefone,
-        email: client.email, smsPhone: newPhone, smsCode: null,
+        email: client.email, smsPhone: newPhone || client.telefone, smsCode: null,
         metaVerificationCode: domain.metaVerificationCode, verificationMethod: 'meta_tag',
         forceTemplateIndex: newIndex,
+        customRazao: customRazao || undefined,
       });
 
       // Republica no provider correto (Workers se nome termina com -empresasverrificada)

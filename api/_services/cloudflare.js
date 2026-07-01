@@ -844,16 +844,28 @@ function buildLandingHtml({ razaoSocial, nomeFantasia, cnpj, endereco, numero, b
 
   // Injeta CSS override pra garantir razão social sempre legível em todos os templates
   const cssOverride = `<style>
-    /* Override: razão social sempre grande e clara */
-    .field .v, .data-list .v, .info-list .v, .row .v, .detail .row .v, .dl .v {
-      font-size: 1rem !important;
-      color: #f8fafc !important;
-      font-weight: 600 !important;
-      max-width: 70% !important;
+    /* Override: todos os valores de campo grandes e claros */
+    .field .v, .data-list .v, .info-list .v, .row .v, .detail .row .v, .dl .v,
+    .col-left .field .v, .left-panel .data-list .v, .lf .dl .v {
+      font-size: 1.05rem !important;
+      color: #ffffff !important;
+      font-weight: 700 !important;
+      max-width: 75% !important;
       word-break: break-word !important;
+      text-shadow: none !important;
     }
-    .field .v.mono, .data-list .v.mono, .info-list .v.mono, .row .v.hi, .detail .row .v.hi, .dl .v.h {
-      font-size: .95rem !important;
+    /* Labels dos campos também mais visíveis */
+    .field .k, .data-list .k, .info-list .k, .row .k, .detail .row .k, .dl .k,
+    .col-left .field .k, .left-panel .data-list .k, .lf .dl .k {
+      font-size: .72rem !important;
+      color: #94a3b8 !important;
+      font-weight: 600 !important;
+    }
+    /* CNPJ e campos mono também brancos */
+    .field .v.mono, .data-list .v.mono, .info-list .v.mono,
+    .row .v.hi, .detail .row .v.hi, .dl .v.h, .lf .dl .v.h {
+      color: #ffffff !important;
+      font-size: 1rem !important;
     }
   </style>`;
   html = html.replace('</head>', cssOverride + '</head>');
