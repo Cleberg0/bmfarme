@@ -35,11 +35,14 @@ export default function InfraBlock({ clientId, razaoSocial, nomeFantasia, smsPho
   const [method, setMethod] = useState<VerificationMethod>('meta_tag');
   const [cfAccount, setCfAccount] = useState<'empresasverrificada' | 'zaplifydisparo' | 'netlify' | 'dynadot' | 'porkbun'>('empresasverrificada');
   const { user } = useAuth();
-  const isRonaldo = user?.email === 'ronaldo@gmail.com' || user?.email === 'velhoronaldo@gmail.com' || user?.email === 'Miguel@gmail.com';
+  const isRonaldo = user?.email === 'ronaldo@gmail.com' || user?.email === 'velhoronaldo@gmail.com' || user?.email === 'miguelmacumbinha@gmail.com';
   const isAdmin = user?.role === 'ADMIN';
+  const isZaplify = user?.email === 'julia@gmail.com' || user?.email === 'maria@gmail.com';
   const netlifyDomains = isRonaldo
     ? ['verificametaativos.com', 'centralativoss.com']
     : isAdmin
+    ? ['verificativos.com', 'ativoscontas.com', 'verificacontas.com', 'zaplifyativos.com', 'zaplifynegocios.com', 'zaplifytrabalho.com']
+    : isZaplify
     ? ['verificativos.com', 'ativoscontas.com', 'verificacontas.com', 'zaplifyativos.com', 'zaplifynegocios.com', 'zaplifytrabalho.com']
     : ['verificativos.com', 'ativoscontas.com', 'verificacontas.com'];
   const [selectedNetlifyDomain, setSelectedNetlifyDomain] = useState(netlifyDomains[0]);
